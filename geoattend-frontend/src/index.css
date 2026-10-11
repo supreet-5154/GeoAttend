@@ -1,0 +1,69 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap");
+
+:root {
+  font-family: "DM Sans", "Avenir Next", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #171717;
+  background: #f3f5f1;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --ink: #171717;
+  --muted: #737373;
+  --line: #e6e4e7;
+  --paper: #f5f4f6;
+  --surface: #ffffff;
+  --forest: #121212;
+  --forest-light: #2d3250;
+  --lime: #ff8a3d;
+  --coral: #ff9a9e;
+  --blue: #2d3250;
+  --shadow: 0 14px 32px rgba(18, 18, 18, 0.07);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+a {
+  text-decoration: none;
+}
+
+button {
+  color: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(62, 126, 99, 0.34);
+  outline-offset: 2px;
+}
+
+img {
+  max-width: 100%;
+}
+
