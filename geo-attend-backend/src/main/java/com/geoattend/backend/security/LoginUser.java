@@ -11,6 +11,14 @@ public class LoginUser {
     public LoginUser() {
     }
 
+    public LoginUser(Long id, String name, String email, String role, String passwordHash) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.role = role;
+        this.passwordHash = passwordHash;
+    }
+
     public Long getId() {
         return id;
     }

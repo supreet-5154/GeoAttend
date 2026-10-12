@@ -61,7 +61,8 @@ public class AttendanceTrackingRepository {
                   SELECT a.tracking_id, a.check_number, a.checked_at, m.name AS member_name,
                       s.title AS session_title,
                        a.latitude, a.longitude, a.accuracy_meters, a.distance_meters,
-                       a.inside_geofence
+                       a.inside_geofence, a.accuracy_status, a.boundary_tolerance_meters,
+                       a.evaluation_reason
                 FROM attendance_location_audit a
                 JOIN attendance_tracking t ON t.id = a.tracking_id
                 JOIN members m ON m.id = t.member_id
@@ -81,6 +82,9 @@ public class AttendanceTrackingRepository {
                     audit.setAccuracyMeters(rs.getObject("accuracy_meters", Double.class));
                     audit.setDistanceMeters(rs.getDouble("distance_meters"));
                     audit.setInsideGeofence(rs.getBoolean("inside_geofence"));
+                    audit.setAccuracyStatus(rs.getString("accuracy_status"));
+                    audit.setBoundaryToleranceMeters(rs.getObject("boundary_tolerance_meters", Double.class));
+                    audit.setEvaluationReason(rs.getString("evaluation_reason"));
                     return audit;
                 },
                 sessionId
@@ -115,13 +119,22 @@ public class AttendanceTrackingRepository {
     public void recordLocationCheck(Long trackingId, int checkNumber, LocalDateTime checkedAt,
             double latitude, double longitude, Double accuracyMeters, double distanceMeters,
             boolean insideGeofence) {
+        recordLocationCheck(trackingId, checkNumber, checkedAt, latitude, longitude,
+                accuracyMeters, distanceMeters, insideGeofence, "HIGH", 0.0, null);
+    }
+
+    public void recordLocationCheck(Long trackingId, int checkNumber, LocalDateTime checkedAt,
+            double latitude, double longitude, Double accuracyMeters, double distanceMeters,
+            boolean insideGeofence, String accuracyStatus, Double boundaryToleranceMeters,
+            String evaluationReason) {
         insertLocationCheck(trackingId, checkNumber, checkedAt, latitude, longitude, insideGeofence);
         jdbcTemplate.update(
                 """
                 INSERT INTO attendance_location_audit
                     (tracking_id, check_number, checked_at, latitude, longitude,
-                     accuracy_meters, distance_meters, inside_geofence)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                     accuracy_meters, distance_meters, inside_geofence,
+                     accuracy_status, boundary_tolerance_meters, evaluation_reason)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 trackingId,
                 checkNumber,
@@ -130,7 +143,10 @@ public class AttendanceTrackingRepository {
                 longitude,
                 accuracyMeters,
                 distanceMeters,
-                insideGeofence
+                insideGeofence,
+                accuracyStatus,
+                boundaryToleranceMeters,
+                evaluationReason
         );
         jdbcTemplate.update(
                 """

@@ -9,6 +9,9 @@ public class Member {
     private String name;
     private String email;
     private String role = "MEMBER";
+    private Long batchId;
+    private String batchName;
+    private String studentId;
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
     private String passwordHash;
@@ -21,6 +24,16 @@ public class Member {
         this.name = name;
         this.email = email;
         this.role = "MEMBER";
+    }
+
+    public Member(Long id, String name, String email, Long batchId, String batchName, String studentId) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.role = "MEMBER";
+        this.batchId = batchId;
+        this.batchName = batchName;
+        this.studentId = studentId;
     }
 
     public Long getId() {
@@ -53,6 +66,30 @@ public class Member {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public Long getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(Long batchId) {
+        this.batchId = batchId;
+    }
+
+    public String getBatchName() {
+        return batchName;
+    }
+
+    public void setBatchName(String batchName) {
+        this.batchName = batchName;
+    }
+
+    public String getStudentId() {
+        return studentId;
+    }
+
+    public void setStudentId(String studentId) {
+        this.studentId = studentId;
     }
 
     public String getPassword() {

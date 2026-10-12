@@ -10,6 +10,8 @@ import com.geoattend.backend.service.AttendanceTrackingService;
 import com.geoattend.backend.service.ClubUserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.geoattend.backend.model.PagedResponse;
+import java.util.List;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -203,18 +205,63 @@ public class AttendanceController {
                 return ResponseEntity.notFound().build();
         }
 
+    @GetMapping
+    public ResponseEntity<?> getAttendance(
+            @RequestParam(required = false) Long sessionId,
+            @RequestParam(required = false) Long memberId,
+            @RequestParam(required = false) Long batchId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String method,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate,
+            @RequestParam(required = false, defaultValue = "markedAt") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortDirection,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+
+        if (page != null && size != null) {
+            PagedResponse<Attendance> response = attendanceService.getPagedAttendance(
+                    sessionId, memberId, batchId, search, method, status, fromDate, toDate,
+                    sortBy, sortDirection, page, size);
+            return ResponseEntity.ok(response);
+        } else {
+            List<Attendance> list = attendanceService.getFilteredAttendance(
+                    sessionId, memberId, batchId, search, method, status, fromDate, toDate,
+                    sortBy, sortDirection);
+            return ResponseEntity.ok()
+                    .header("X-Total-Count", String.valueOf(list.size()))
+                    .body(list);
+        }
+    }
+
     @GetMapping("/session/{sessionId}")
     public ResponseEntity<?> getAttendanceBySession(
-            @PathVariable Long sessionId) {
+            @PathVariable Long sessionId,
+            @RequestParam(required = false) Long batchId) {
 
         try {
-
             return ResponseEntity.ok(
-                    attendanceService.getAttendanceBySessionId(sessionId)
+                    attendanceService.getAttendanceBySessionId(sessionId, batchId)
             );
-
         } catch (RuntimeException e) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(new ApiResponse(
+                            false,
+                            e.getMessage()
+                    ));
+        }
+    }
 
+    @GetMapping("/batch/{batchId}")
+    public ResponseEntity<?> getAttendanceByBatch(
+            @PathVariable Long batchId) {
+        try {
+            return ResponseEntity.ok(
+                    attendanceService.getAttendanceByBatchId(batchId)
+            );
+        } catch (RuntimeException e) {
             return ResponseEntity
                     .badRequest()
                     .body(new ApiResponse(

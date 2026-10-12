@@ -15,6 +15,9 @@ public class LocationCheckResult {
     private Double accuracyMeters;
     private Integer radiusMeters;
     private Integer checkIntervalSeconds;
+    private String accuracyStatus;
+    private Double boundaryToleranceMeters;
+    private String evaluationReason;
 
     public boolean isInsideGeofence() { return insideGeofence; }
     public void setInsideGeofence(boolean insideGeofence) { this.insideGeofence = insideGeofence; }
@@ -38,4 +41,10 @@ public class LocationCheckResult {
     public void setRadiusMeters(Integer radiusMeters) { this.radiusMeters = radiusMeters; }
     public Integer getCheckIntervalSeconds() { return checkIntervalSeconds; }
     public void setCheckIntervalSeconds(Integer checkIntervalSeconds) { this.checkIntervalSeconds = checkIntervalSeconds; }
+    public String getAccuracyStatus() { return accuracyStatus; }
+    public void setAccuracyStatus(String accuracyStatus) { this.accuracyStatus = accuracyStatus; }
+    public Double getBoundaryToleranceMeters() { return boundaryToleranceMeters; }
+    public void setBoundaryToleranceMeters(Double boundaryToleranceMeters) { this.boundaryToleranceMeters = boundaryToleranceMeters; }
+    public String getEvaluationReason() { return evaluationReason; }
+    public void setEvaluationReason(String evaluationReason) { this.evaluationReason = evaluationReason; }
 }

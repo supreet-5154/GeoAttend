@@ -33,11 +33,15 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")))
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // Login is public
+                        // Login and public registration routes
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/batches/active").permitAll()
 
                         // Member self-service routes
                         .requestMatchers("/api/attendance/self").hasRole("MEMBER")
@@ -46,7 +50,22 @@ public class SecurityConfig {
                         .requestMatchers("/api/attendance/location-check").hasRole("MEMBER")
                         .requestMatchers("/api/attendance/tracking/start").hasRole("MEMBER")
 
-                        // Only ADMIN can create members
+                        // Batch routes
+                        .requestMatchers(HttpMethod.GET, "/api/batches", "/api/batches/*")
+                        .hasAnyRole("ADMIN", "CLUB_USER")
+                        .requestMatchers("/api/batches/**").hasRole("ADMIN")
+
+                        // Registration approval and member batch assignment (ADMIN and CLUB_USER)
+                        .requestMatchers(HttpMethod.GET, "/api/members/signups")
+                        .hasAnyRole("ADMIN", "CLUB_USER")
+                        .requestMatchers(HttpMethod.POST, "/api/members/signups/*/approve")
+                        .hasAnyRole("ADMIN", "CLUB_USER")
+                        .requestMatchers(HttpMethod.POST, "/api/members/signups/*/reject")
+                        .hasAnyRole("ADMIN", "CLUB_USER")
+                        .requestMatchers(HttpMethod.PUT, "/api/members/*/batch")
+                        .hasAnyRole("ADMIN", "CLUB_USER")
+
+                        // Member management
                         .requestMatchers(HttpMethod.GET, "/api/members")
                         .hasAnyRole("ADMIN", "CLUB_USER")
                         .requestMatchers("/api/members/**").hasRole("ADMIN")
@@ -63,6 +82,8 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "CLUB_USER")
 
                         // Staff attendance routes
+                        .requestMatchers(HttpMethod.GET, "/api/attendance")
+                        .hasAnyRole("ADMIN", "CLUB_USER")
                         .requestMatchers(HttpMethod.POST, "/api/attendance")
                         .hasAnyRole("ADMIN", "CLUB_USER")
                         .requestMatchers(HttpMethod.PUT, "/api/attendance/**").hasRole("ADMIN")
@@ -71,6 +92,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/attendance/session/**")
                         .hasAnyRole("ADMIN", "CLUB_USER")
                         .requestMatchers(HttpMethod.GET, "/api/attendance/member/**")
+                        .hasAnyRole("ADMIN", "CLUB_USER")
+                        .requestMatchers(HttpMethod.GET, "/api/attendance/batch/**")
                         .hasAnyRole("ADMIN", "CLUB_USER")
 
                         // Everything else requires JWT

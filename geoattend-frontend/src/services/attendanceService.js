@@ -1,8 +1,19 @@
 import { apiRequest } from "./api";
+import { buildQueryString } from "../utils/queryUtils";
 
 const attendanceService = {
-  getAttendanceForSession: async (sessionId) =>
-    apiRequest(`/api/attendance/session/${sessionId}`),
+  getAttendance: async (params = {}) =>
+    apiRequest(`/api/attendance${buildQueryString(params)}`),
+
+  getAttendanceForSession: async (sessionId, batchId = null) => {
+    const url = batchId && batchId !== "all"
+      ? `/api/attendance/session/${sessionId}?batchId=${batchId}`
+      : `/api/attendance/session/${sessionId}`;
+    return apiRequest(url);
+  },
+
+  getAttendanceByBatch: async (batchId) =>
+    apiRequest(`/api/attendance/batch/${batchId}`),
 
   getAttendanceForMember: async (memberId) =>
     apiRequest(`/api/attendance/member/${memberId}`),

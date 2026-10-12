@@ -51,12 +51,12 @@ export const apiRequest = async (endpoint, options = {}) => {
   if (!response.ok) {
     let message = "Something went wrong. Please try again.";
 
-    if (response.status === 401) {
+    if (data?.message || data?.detail) {
+      message = data.message || data.detail;
+    } else if (response.status === 401) {
       message = "Your session has expired. Please log in again.";
     } else if (response.status === 403) {
       message = "You do not have permission to perform this action.";
-    } else if (data?.message) {
-      message = data.message;
     } else if (typeof data === "string" && data) {
       message = data;
     } else if (response.status === 400) {

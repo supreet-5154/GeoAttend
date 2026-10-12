@@ -7,6 +7,13 @@ const authService = {
       body: JSON.stringify(credentials),
       skipAuth: true,
     }),
+
+  register: async (payload) =>
+    apiRequest("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify(payload),
+      skipAuth: true,
+    }),
 };
 
 export default authService;

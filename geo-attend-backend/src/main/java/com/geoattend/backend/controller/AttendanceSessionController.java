@@ -2,6 +2,7 @@ package com.geoattend.backend.controller;
 
 import com.geoattend.backend.model.ApiResponse;
 import com.geoattend.backend.model.AttendanceSession;
+import com.geoattend.backend.model.PagedResponse;
 import com.geoattend.backend.service.AttendanceSessionService;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -26,8 +28,26 @@ public class AttendanceSessionController {
     }
 
     @GetMapping
-    public List<AttendanceSession> getAllSessions() {
-        return attendanceSessionService.getAllSessions();
+    public ResponseEntity<?> getAllSessions(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate,
+            @RequestParam(required = false, defaultValue = "startTime") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortDirection,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        if (page != null && size != null) {
+            PagedResponse<AttendanceSession> response = attendanceSessionService.getPagedSessions(
+                    search, status, fromDate, toDate, sortBy, sortDirection, page, size);
+            return ResponseEntity.ok(response);
+        } else {
+            List<AttendanceSession> list = attendanceSessionService.getFilteredSessions(
+                    search, status, fromDate, toDate, sortBy, sortDirection);
+            return ResponseEntity.ok()
+                    .header("X-Total-Count", String.valueOf(list.size()))
+                    .body(list);
+        }
     }
 
     @PostMapping

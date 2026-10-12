@@ -1,7 +1,9 @@
 import { apiRequest } from "./api";
+import { buildQueryString } from "../utils/queryUtils";
 
 const sessionService = {
-  listSessions: async () => apiRequest("/api/sessions"),
+  listSessions: async (params = {}) =>
+    apiRequest(`/api/sessions${buildQueryString(params)}`),
 
   createSession: async (payload) =>
     apiRequest("/api/sessions", {

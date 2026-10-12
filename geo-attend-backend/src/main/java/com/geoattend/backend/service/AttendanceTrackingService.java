@@ -80,7 +80,10 @@ public class AttendanceTrackingService {
                 session.getLatitude(), session.getLongitude(),
                 request.getLatitude(), request.getLongitude()
         );
-        boolean inside = distanceMeters <= session.getRadiusMeters();
+        AttendanceTrackingPolicy.GeofenceEvaluation evaluation = AttendanceTrackingPolicy.evaluateGeofencePresence(
+                distanceMeters, session.getRadiusMeters(), request.getAccuracyMeters()
+        );
+        boolean inside = evaluation.insideGeofence();
         int checkIntervalSeconds = AttendanceTrackingPolicy.checkIntervalSeconds(
             session.getStartTime(), session.getEndTime());
 
@@ -108,18 +111,23 @@ public class AttendanceTrackingService {
         result.setAccuracyMeters(request.getAccuracyMeters() == null ? null : roundMeters(request.getAccuracyMeters()));
         result.setRadiusMeters(session.getRadiusMeters());
         result.setCheckIntervalSeconds(checkIntervalSeconds);
+        result.setAccuracyStatus(evaluation.accuracyStatus());
+        result.setBoundaryToleranceMeters(roundMeters(evaluation.boundaryToleranceMeters()));
+        result.setEvaluationReason(evaluation.evaluationReason());
         if (checkNumber <= lastCheckNumber) {
             result.setStatus(tracking.getStatus());
             result.setTotalChecks(tracking.getTotalChecks());
             result.setInsideChecks(tracking.getInsideChecks());
             result.setNextCheckAt(tracking.getLastCheckAt().plusSeconds(checkIntervalSeconds));
+            result.setEvaluationReason("Location check for current slot already recorded; status preserved.");
             return result;
         }
 
         trackingRepository.recordLocationCheck(
             tracking.getId(), checkNumber, now,
             request.getLatitude(), request.getLongitude(), request.getAccuracyMeters(),
-            distanceMeters, inside);
+            distanceMeters, inside, evaluation.accuracyStatus(),
+            evaluation.boundaryToleranceMeters(), evaluation.evaluationReason());
         tracking = trackingRepository.findByMemberAndSession(memberId, session.getId());
         result.setTrackingStarted(trackingWasMissing && inside);
         result.setSampleRecorded(true);

@@ -8,6 +8,8 @@ import com.geoattend.backend.repository.AttendanceSessionRepository;
 import com.geoattend.backend.repository.AttendanceTrackingRepository;
 import com.geoattend.backend.repository.MemberRepository;
 import com.geoattend.backend.security.ClubUser;
+import com.geoattend.backend.model.PagedResponse;
+import com.geoattend.backend.util.DateTimeFilterUtils;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -236,6 +238,20 @@ public class AttendanceService {
         return attendanceRepository.getAttendanceBySessionId(sessionId);
     }
 
+    public List<Attendance> getAttendanceBySessionId(Long sessionId, Long batchId) {
+        if (!attendanceSessionRepository.sessionExists(sessionId)) {
+            throw new RuntimeException("Attendance session does not exist");
+        }
+        if (batchId == null) {
+            return attendanceRepository.getAttendanceBySessionId(sessionId);
+        }
+        return attendanceRepository.getAttendanceBySessionAndBatch(sessionId, batchId);
+    }
+
+    public List<Attendance> getAttendanceByBatchId(Long batchId) {
+        return attendanceRepository.getAttendanceByBatchId(batchId);
+    }
+
     public List<Attendance> getAttendanceByMemberId(Long memberId) {
 
         if (!memberRepository.memberExists(memberId)) {
@@ -265,6 +281,35 @@ public class AttendanceService {
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
         return EARTH_RADIUS * c;
+    }
+
+    public PagedResponse<Attendance> getPagedAttendance(
+            Long sessionId, Long memberId, Long batchId, String search,
+            String method, String status, String fromDate, String toDate,
+            String sortBy, String sortDirection, int page, int size) {
+        LocalDateTime start = DateTimeFilterUtils.parseStartBoundary(fromDate);
+        LocalDateTime end = DateTimeFilterUtils.parseEndBoundary(toDate);
+        int pageNum = Math.max(0, page);
+        int pageSize = Math.max(1, Math.min(size, 100));
+        int offset = pageNum * pageSize;
+
+        long total = attendanceRepository.countAttendance(sessionId, memberId, batchId, search, method, status, start, end);
+        List<Attendance> content = attendanceRepository.findAttendance(
+                sessionId, memberId, batchId, search, method, status, start, end,
+                sortBy, sortDirection, offset, pageSize);
+
+        return new PagedResponse<>(content, pageNum, pageSize, total);
+    }
+
+    public List<Attendance> getFilteredAttendance(
+            Long sessionId, Long memberId, Long batchId, String search,
+            String method, String status, String fromDate, String toDate,
+            String sortBy, String sortDirection) {
+        LocalDateTime start = DateTimeFilterUtils.parseStartBoundary(fromDate);
+        LocalDateTime end = DateTimeFilterUtils.parseEndBoundary(toDate);
+        return attendanceRepository.findAttendance(
+                sessionId, memberId, batchId, search, method, status, start, end,
+                sortBy, sortDirection, null, null);
     }
 
 }

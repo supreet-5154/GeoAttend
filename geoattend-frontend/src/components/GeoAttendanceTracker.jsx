@@ -2,20 +2,35 @@ import { useEffect, useRef } from "react";
 import attendanceService from "../services/attendanceService";
 import sessionService from "../services/sessionService";
 
-const FIRST_CHECK_RETRY_MS = 60 * 1000;
+const FIRST_CHECK_RETRY_MS = 30 * 1000;
+const MAX_STALE_POSITION_AGE_MS = 45 * 1000;
 
 const readDeviceLocation = (timeout) => new Promise((resolve, reject) => {
   if (!navigator.geolocation) {
-    reject(new Error("This browser does not support location access."));
+    const error = new Error("This browser does not support geolocation.");
+    error.code = 2; // POSITION_UNAVAILABLE
+    reject(error);
     return;
   }
 
   navigator.geolocation.getCurrentPosition(
-    ({ coords }) => resolve({
-      latitude: coords.latitude,
-      longitude: coords.longitude,
-      accuracyMeters: coords.accuracy,
-    }),
+    (position) => {
+      const now = Date.now();
+      const posTimestamp = Number(position.timestamp) || now;
+      if (now - posTimestamp > MAX_STALE_POSITION_AGE_MS) {
+        const staleError = new Error("Browser returned stale GPS coordinates. Retrying fresh acquisition.");
+        staleError.code = 3; // treat like timeout for fresh retry
+        reject(staleError);
+        return;
+      }
+
+      resolve({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracyMeters: position.coords.accuracy,
+        timestamp: posTimestamp,
+      });
+    },
     (error) => reject(error),
     { enableHighAccuracy: true, maximumAge: 0, timeout },
   );
@@ -28,6 +43,7 @@ export default function GeoAttendanceTracker({ showToast }) {
   const lastNoticeAt = useRef(new Map());
   const trackingStartedNotices = useRef(new Set());
   const tickInProgress = useRef(false);
+  const wakeLockRef = useRef(null);
 
   useEffect(() => {
     showToastRef.current = showToast;
@@ -36,6 +52,32 @@ export default function GeoAttendanceTracker({ showToast }) {
   useEffect(() => {
     let stopped = false;
     let timer;
+
+    const requestWakeLock = async () => {
+      if ("wakeLock" in navigator && document.visibilityState === "visible" && !wakeLockRef.current) {
+        try {
+          wakeLockRef.current = await navigator.wakeLock.request("screen");
+          wakeLockRef.current.addEventListener("release", () => {
+            wakeLockRef.current = null;
+          });
+        } catch {
+          // Wake lock is an optional enhancement; silently ignore failures
+        }
+      }
+    };
+
+    const releaseWakeLock = () => {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
+      }
+    };
+
+    const broadcastTelemetry = (data) => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("geoattend:telemetry", { detail: data }));
+      }
+    };
 
     const notifyAtMostEvery = (key, message, type = "info") => {
       const now = Date.now();
@@ -65,20 +107,44 @@ export default function GeoAttendanceTracker({ showToast }) {
 
       inFlight.current.add(sessionKey);
       try {
+        await requestWakeLock();
+
         if (!tracking) {
           await attendanceService.startMyTracking({ sessionId: session.id });
         }
 
-        const locationTimeout = Math.min(20000, Math.max(1000, checkIntervalMs - 500));
+        const locationTimeout = Math.min(20000, Math.max(3000, checkIntervalMs - 500));
         const location = await readDeviceLocation(locationTimeout);
         if (stopped) return;
 
         const result = await attendanceService.recordLocationCheck({
           sessionId: session.id,
-          ...location,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          accuracyMeters: location.accuracyMeters,
         });
+
         const nextCheckAt = result.nextCheckAt ? new Date(result.nextCheckAt).getTime() : Date.now() + checkIntervalMs;
         nextAttemptAt.current.set(sessionKey, nextCheckAt);
+
+        // Broadcast live telemetry
+        broadcastTelemetry({
+          sessionId: session.id,
+          sessionTitle: session.title,
+          status: result.status,
+          insideGeofence: result.insideGeofence,
+          distanceMeters: result.distanceMeters,
+          accuracyMeters: result.accuracyMeters,
+          accuracyStatus: result.accuracyStatus,
+          boundaryToleranceMeters: result.boundaryToleranceMeters,
+          evaluationReason: result.evaluationReason,
+          radiusMeters: result.radiusMeters,
+          nextCheckAt,
+          sampleRecorded: result.sampleRecorded,
+          lastUpdated: Date.now(),
+          error: null,
+        });
+
         if (result.sampleRecorded) {
           lastNoticeAt.current.delete(`location-${sessionKey}`);
           if (result.insideGeofence && result.status === "TRACKING" && !trackingStartedNotices.current.has(sessionKey)) {
@@ -90,7 +156,9 @@ export default function GeoAttendanceTracker({ showToast }) {
             const accuracy = result.accuracyMeters == null ? "GPS accuracy unavailable" : `GPS accuracy ±${Number(result.accuracyMeters).toFixed(0)} m`;
             notifyAtMostEvery(
               `outside-${sessionKey}`,
-              `Location ${distance} m from center; fence radius ${radius} m. ${accuracy}. This check is recorded.`,
+              result.accuracyStatus === "POOR_ACCURACY"
+                ? `GPS accuracy ±${Number(result.accuracyMeters).toFixed(0)}m is too low to verify attendance. Please enable Wi-Fi or move near a window.`
+                : `Location ${distance} m from center; fence radius ${radius} m. ${accuracy}. This check is recorded.`,
               "error",
             );
           }
@@ -102,13 +170,31 @@ export default function GeoAttendanceTracker({ showToast }) {
         const retryDelay = Math.min(FIRST_CHECK_RETRY_MS, checkIntervalMs);
         const retryAt = Date.now() + retryDelay;
         nextAttemptAt.current.set(sessionKey, retryAt);
-        notifyAtMostEvery(
-          `location-${sessionKey}`,
-          error.code === 1
-            ? "Allow location access in your browser to track attendance automatically."
-            : error.message || "Unable to check your current location. Keep this page open and try again.",
-          "error",
-        );
+
+        let errorCategory = "UNKNOWN";
+        let userMessage = error.message || "Unable to acquire location.";
+        if (error.code === 1) {
+          errorCategory = "PERMISSION_DENIED";
+          userMessage = "Location access denied. Please allow location access in your browser to record attendance.";
+        } else if (error.code === 2) {
+          errorCategory = "POSITION_UNAVAILABLE";
+          userMessage = "Device position unavailable. Ensure GPS/network location is enabled.";
+        } else if (error.code === 3) {
+          errorCategory = "TIMEOUT";
+          userMessage = "Location request timed out. Retrying automatically...";
+        }
+
+        broadcastTelemetry({
+          sessionId: session.id,
+          sessionTitle: session.title,
+          lastUpdated: Date.now(),
+          error: {
+            category: errorCategory,
+            message: userMessage,
+          },
+        });
+
+        notifyAtMostEvery(`location-${sessionKey}`, userMessage, "error");
         return retryDelay;
       } finally {
         inFlight.current.delete(sessionKey);
@@ -167,6 +253,7 @@ export default function GeoAttendanceTracker({ showToast }) {
 
     return () => {
       stopped = true;
+      releaseWakeLock();
       window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", handleVisibility);
     };

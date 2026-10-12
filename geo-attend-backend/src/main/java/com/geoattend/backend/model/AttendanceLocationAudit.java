@@ -14,6 +14,9 @@ public class AttendanceLocationAudit {
     private Double accuracyMeters;
     private Double distanceMeters;
     private boolean insideGeofence;
+    private String accuracyStatus;
+    private Double boundaryToleranceMeters;
+    private String evaluationReason;
 
     public Long getTrackingId() { return trackingId; }
     public void setTrackingId(Long trackingId) { this.trackingId = trackingId; }
@@ -35,4 +38,10 @@ public class AttendanceLocationAudit {
     public void setDistanceMeters(Double distanceMeters) { this.distanceMeters = distanceMeters; }
     public boolean isInsideGeofence() { return insideGeofence; }
     public void setInsideGeofence(boolean insideGeofence) { this.insideGeofence = insideGeofence; }
+    public String getAccuracyStatus() { return accuracyStatus; }
+    public void setAccuracyStatus(String accuracyStatus) { this.accuracyStatus = accuracyStatus; }
+    public Double getBoundaryToleranceMeters() { return boundaryToleranceMeters; }
+    public void setBoundaryToleranceMeters(Double boundaryToleranceMeters) { this.boundaryToleranceMeters = boundaryToleranceMeters; }
+    public String getEvaluationReason() { return evaluationReason; }
+    public void setEvaluationReason(String evaluationReason) { this.evaluationReason = evaluationReason; }
 }

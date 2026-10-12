@@ -162,4 +162,188 @@ public class AttendanceRepository {
                 memberId
         );
     }
+
+    public List<Attendance> getAttendanceByBatchId(Long batchId) {
+        String sql = """
+        SELECT a.id, a.session_id, a.member_id, a.marked_at,
+               a.latitude, a.longitude, a.attendance_method
+        FROM attendance a
+        JOIN members m ON m.id = a.member_id
+        WHERE m.batch_id = ?
+        ORDER BY a.marked_at DESC
+        """;
+
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new Attendance(
+                        rs.getLong("id"),
+                        rs.getLong("session_id"),
+                        rs.getLong("member_id"),
+                        rs.getTimestamp("marked_at").toLocalDateTime(),
+                        rs.getObject("latitude", Double.class),
+                        rs.getObject("longitude", Double.class),
+                        rs.getString("attendance_method")
+                ),
+                batchId
+        );
+    }
+
+    public List<Attendance> getAttendanceBySessionAndBatch(Long sessionId, Long batchId) {
+        String sql = """
+        SELECT a.id, a.session_id, a.member_id, a.marked_at,
+               a.latitude, a.longitude, a.attendance_method
+        FROM attendance a
+        JOIN members m ON m.id = a.member_id
+        WHERE a.session_id = ? AND m.batch_id = ?
+        ORDER BY a.marked_at ASC
+        """;
+
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new Attendance(
+                        rs.getLong("id"),
+                        rs.getLong("session_id"),
+                        rs.getLong("member_id"),
+                        rs.getTimestamp("marked_at").toLocalDateTime(),
+                        rs.getObject("latitude", Double.class),
+                        rs.getObject("longitude", Double.class),
+                        rs.getString("attendance_method")
+                ),
+                sessionId,
+                batchId
+        );
+    }
+
+    public List<Attendance> findAttendance(
+            Long sessionId,
+            Long memberId,
+            Long batchId,
+            String search,
+            String method,
+            String status,
+            java.time.LocalDateTime startDate,
+            java.time.LocalDateTime endDate,
+            String sortBy,
+            String sortDirection,
+            Integer offset,
+            Integer limit) {
+        StringBuilder sql = new StringBuilder("""
+            SELECT a.id, a.session_id, a.member_id, a.marked_at,
+                   a.latitude, a.longitude, a.attendance_method,
+                   s.title AS session_title,
+                   m.name AS member_name, m.student_id, m.batch_id,
+                   b.name AS batch_name,
+                   COALESCE(t.status, 'PRESENT') AS tracking_status
+            FROM attendance a
+            JOIN attendance_sessions s ON s.id = a.session_id
+            JOIN members m ON m.id = a.member_id
+            LEFT JOIN batches b ON b.id = m.batch_id
+            LEFT JOIN attendance_tracking t ON t.session_id = a.session_id AND t.member_id = a.member_id
+            WHERE 1=1
+        """);
+
+        List<Object> params = new java.util.ArrayList<>();
+        appendAttendanceFilters(sql, params, sessionId, memberId, batchId, search, method, status, startDate, endDate);
+
+        String orderCol = switch (sortBy == null ? "" : sortBy.toLowerCase()) {
+            case "membername", "name", "member_name" -> "m.name";
+            case "sessiontitle", "session_title", "title" -> "s.title";
+            case "method", "attendancemethod", "attendance_method" -> "a.attendance_method";
+            case "id" -> "a.id";
+            case "status", "trackingstatus", "tracking_status" -> "tracking_status";
+            default -> "a.marked_at";
+        };
+        String orderDir = "asc".equalsIgnoreCase(sortDirection) ? "ASC" : "DESC";
+        sql.append(" ORDER BY ").append(orderCol).append(" ").append(orderDir).append(", a.id DESC");
+
+        if (offset != null && limit != null) {
+            sql.append(" LIMIT ? OFFSET ?");
+            params.add(limit);
+            params.add(offset);
+        }
+
+        return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> new Attendance(
+                rs.getLong("id"),
+                rs.getLong("session_id"),
+                rs.getLong("member_id"),
+                rs.getTimestamp("marked_at").toLocalDateTime(),
+                rs.getObject("latitude", Double.class),
+                rs.getObject("longitude", Double.class),
+                rs.getString("attendance_method"),
+                rs.getString("session_title"),
+                rs.getString("member_name"),
+                rs.getString("student_id"),
+                rs.getObject("batch_id", Long.class),
+                rs.getString("batch_name"),
+                rs.getString("tracking_status")
+        ), params.toArray());
+    }
+
+    public long countAttendance(
+            Long sessionId,
+            Long memberId,
+            Long batchId,
+            String search,
+            String method,
+            String status,
+            java.time.LocalDateTime startDate,
+            java.time.LocalDateTime endDate) {
+        StringBuilder sql = new StringBuilder("""
+            SELECT COUNT(*)
+            FROM attendance a
+            JOIN attendance_sessions s ON s.id = a.session_id
+            JOIN members m ON m.id = a.member_id
+            LEFT JOIN batches b ON b.id = m.batch_id
+            LEFT JOIN attendance_tracking t ON t.session_id = a.session_id AND t.member_id = a.member_id
+            WHERE 1=1
+        """);
+
+        List<Object> params = new java.util.ArrayList<>();
+        appendAttendanceFilters(sql, params, sessionId, memberId, batchId, search, method, status, startDate, endDate);
+
+        Long count = jdbcTemplate.queryForObject(sql.toString(), Long.class, params.toArray());
+        return count != null ? count : 0L;
+    }
+
+    private void appendAttendanceFilters(StringBuilder sql, List<Object> params,
+                                         Long sessionId, Long memberId, Long batchId,
+                                         String search, String method, String status,
+                                         java.time.LocalDateTime startDate, java.time.LocalDateTime endDate) {
+        if (sessionId != null) {
+            sql.append(" AND a.session_id = ?");
+            params.add(sessionId);
+        }
+        if (memberId != null) {
+            sql.append(" AND a.member_id = ?");
+            params.add(memberId);
+        }
+        if (batchId != null) {
+            sql.append(" AND m.batch_id = ?");
+            params.add(batchId);
+        }
+        if (method != null && !method.isBlank() && !"all".equalsIgnoreCase(method)) {
+            sql.append(" AND a.attendance_method = ?");
+            params.add(method.toUpperCase());
+        }
+        if (status != null && !status.isBlank() && !"all".equalsIgnoreCase(status)) {
+            sql.append(" AND COALESCE(t.status, 'PRESENT') = ?");
+            params.add(status.toUpperCase());
+        }
+        if (startDate != null) {
+            sql.append(" AND a.marked_at >= ?");
+            params.add(startDate);
+        }
+        if (endDate != null) {
+            sql.append(" AND a.marked_at <= ?");
+            params.add(endDate);
+        }
+        if (search != null && !search.isBlank()) {
+            sql.append(" AND (LOWER(m.name) LIKE ? OR LOWER(m.email) LIKE ? OR LOWER(m.student_id) LIKE ? OR LOWER(s.title) LIKE ?)");
+            String term = "%" + search.trim().toLowerCase() + "%";
+            params.add(term);
+            params.add(term);
+            params.add(term);
+            params.add(term);
+        }
+    }
 }

@@ -1,8 +1,11 @@
 package com.geoattend.backend.service;
 
 import com.geoattend.backend.model.AttendanceSession;
+import com.geoattend.backend.model.PagedResponse;
 import com.geoattend.backend.repository.AttendanceRepository;
 import com.geoattend.backend.repository.AttendanceSessionRepository;
+import com.geoattend.backend.util.DateTimeFilterUtils;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +24,31 @@ public class AttendanceSessionService {
 
     public List<AttendanceSession> getAllSessions() {
         return attendanceSessionRepository.getAllSessions();
+    }
+
+    public PagedResponse<AttendanceSession> getPagedSessions(
+            String search, String status, String fromDate, String toDate,
+            String sortBy, String sortDirection, int page, int size) {
+        LocalDateTime start = DateTimeFilterUtils.parseStartBoundary(fromDate);
+        LocalDateTime end = DateTimeFilterUtils.parseEndBoundary(toDate);
+        int pageNum = Math.max(0, page);
+        int pageSize = Math.max(1, Math.min(size, 100));
+        int offset = pageNum * pageSize;
+
+        long total = attendanceSessionRepository.countSessions(search, status, start, end);
+        List<AttendanceSession> content = attendanceSessionRepository.findSessions(
+                search, status, start, end, sortBy, sortDirection, offset, pageSize);
+
+        return new PagedResponse<>(content, pageNum, pageSize, total);
+    }
+
+    public List<AttendanceSession> getFilteredSessions(
+            String search, String status, String fromDate, String toDate,
+            String sortBy, String sortDirection) {
+        LocalDateTime start = DateTimeFilterUtils.parseStartBoundary(fromDate);
+        LocalDateTime end = DateTimeFilterUtils.parseEndBoundary(toDate);
+        return attendanceSessionRepository.findSessions(
+                search, status, start, end, sortBy, sortDirection, null, null);
     }
 
     public int createSession(AttendanceSession session) {

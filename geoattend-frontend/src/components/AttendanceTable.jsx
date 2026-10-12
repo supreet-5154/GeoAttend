@@ -7,6 +7,7 @@ export default function AttendanceTable({ records, members, sessions, canManage,
   }
 
   const memberMap = Object.fromEntries(members.map((member) => [String(member.id), member.name]));
+  const memberBatchMap = Object.fromEntries(members.map((member) => [String(member.id), member.batchName]));
   const sessionMap = Object.fromEntries(sessions.map((session) => [String(session.id), session.title]));
 
   return (
@@ -15,6 +16,7 @@ export default function AttendanceTable({ records, members, sessions, canManage,
         <thead>
           <tr>
             <th>Member</th>
+            <th>Batch / Generation</th>
             <th>Session</th>
             <th>Marked At</th>
             <th>Method</th>
@@ -25,8 +27,13 @@ export default function AttendanceTable({ records, members, sessions, canManage,
         <tbody>
           {records.map((record) => (
             <tr key={record.id}>
-              <td>{memberMap[String(record.memberId)] || `Member ${record.memberId}`}</td>
-              <td>{sessionMap[String(record.sessionId)] || `Session ${record.sessionId}`}</td>
+              <td className="font-semibold">{record.memberName || memberMap[String(record.memberId)] || `Member ${record.memberId}`}</td>
+              <td>
+                <span className={`batch-pill ${record.batchName || memberBatchMap[String(record.memberId)] ? "assigned" : "unassigned"}`}>
+                  {record.batchName || memberBatchMap[String(record.memberId)] || "Unassigned"}
+                </span>
+              </td>
+              <td>{record.sessionTitle || sessionMap[String(record.sessionId)] || `Session ${record.sessionId}`}</td>
               <td>{formatDateTime(record.markedAt)}</td>
               <td>
                 <span className={`method-badge ${String(record.attendanceMethod).toLowerCase()}`}>

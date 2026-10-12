@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, History, MapPin, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, History, LogOut, MapPin, ShieldCheck } from "lucide-react";
 import Header from "./components/Header";
 import GeoAttendanceTracker from "./components/GeoAttendanceTracker";
 import Sidebar from "./components/Sidebar";
 import Toast from "./components/Toast";
 import Attendance from "./pages/Attendance";
+import Batches from "./pages/Batches";
 import Dashboard from "./pages/Dashboard";
 import MemberAttendance from "./pages/MemberAttendance";
 import MemberHome from "./pages/MemberHome";
 import Members from "./pages/Members";
 import Sessions from "./pages/Sessions";
 import authService from "./services/authService";
+import batchService from "./services/batchService";
 import { clearAuth, getStoredUser } from "./services/api";
 import "./App.css";
 
@@ -39,18 +41,43 @@ function AppShell({ user, title, children, onLogout, sidebarOpen, setSidebarOpen
 }
 
 function LoginPage({ onLoginSuccess, showToast }) {
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [authMode, setAuthMode] = useState("signin");
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const [signupForm, setSignupForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    requestedBatchId: "",
+    studentId: "",
+  });
+  const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
 
-  const handleSubmit = async (event) => {
+  useEffect(() => {
+    let active = true;
+    batchService.listActiveBatches(true)
+      .then((res) => {
+        if (active && Array.isArray(res)) {
+          setBatches(res);
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  const handleLoginSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setNotice("");
 
     try {
-      const data = await authService.login(form);
+      const data = await authService.login(loginForm);
       const loggedInUser = {
         id: data.id,
         name: data.name,
@@ -65,6 +92,59 @@ function LoginPage({ onLoginSuccess, showToast }) {
       showToast("Login successful.", "success");
     } catch (loginError) {
       const message = loginError.message || "Invalid credentials.";
+      setError(message);
+      showToast(message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignupSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+
+    if (!signupForm.name.trim() || !signupForm.email.trim() || !signupForm.password) {
+      setError("Please complete all required fields.");
+      return;
+    }
+
+    if (signupForm.password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
+
+    if (signupForm.password !== signupForm.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const payload = {
+        name: signupForm.name.trim(),
+        email: signupForm.email.trim(),
+        password: signupForm.password,
+        requestedBatchId: signupForm.requestedBatchId ? Number(signupForm.requestedBatchId) : null,
+        studentId: signupForm.studentId.trim() || null,
+      };
+
+      const response = await authService.register(payload);
+      const successMsg = response?.message || "Registration submitted! Your account is pending review by club staff.";
+      setNotice(successMsg);
+      showToast(successMsg, "success");
+      setSignupForm({
+        name: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        requestedBatchId: "",
+        studentId: "",
+      });
+      setAuthMode("signin");
+    } catch (signupError) {
+      const message = signupError.message || "Registration request failed.";
       setError(message);
       showToast(message, "error");
     } finally {
@@ -98,53 +178,192 @@ function LoginPage({ onLoginSuccess, showToast }) {
       <section className="login-form-side">
         <div className="login-card">
           <div className="login-form-heading">
-            <p className="eyebrow">Welcome back</p>
-            <h2>Sign in</h2>
-            <p className="subtitle">Continue to your workspace.</p>
+            <p className="eyebrow">{authMode === "signin" ? "Welcome back" : "Join GeoAttend"}</p>
+            <h2>{authMode === "signin" ? "Sign in" : "Request access"}</h2>
+            <p className="subtitle">
+              {authMode === "signin"
+                ? "Continue to your workspace."
+                : "Submit your details to request club membership."}
+            </p>
           </div>
 
-          <form className="login-form" onSubmit={handleSubmit}>
-            <label>
-              <span>Email address</span>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                placeholder="you@example.com"
-                autoComplete="username"
-                required
-              />
-            </label>
+          <div className="auth-mode-switch" role="tablist" aria-label="Account access">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={authMode === "signin"}
+              className={authMode === "signin" ? "active" : ""}
+              onClick={() => {
+                setAuthMode("signin");
+                setError("");
+                setNotice("");
+              }}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={authMode === "signup"}
+              className={authMode === "signup" ? "active" : ""}
+              onClick={() => {
+                setAuthMode("signup");
+                setError("");
+                setNotice("");
+              }}
+            >
+              Register
+            </button>
+          </div>
 
-            <label>
-              <span>Password</span>
-              <div className="password-input-wrap">
+          {notice && <div className="form-notice" role="status">{notice}</div>}
+          {error && <div className="form-error" role="alert">{error}</div>}
+
+          {authMode === "signin" ? (
+            <form className="login-form" onSubmit={handleLoginSubmit}>
+              <label>
+                <span>Email address</span>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  value={form.password}
-                  onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                  placeholder="Enter your password"
-                  autoComplete="current-password"
+                  type="email"
+                  value={loginForm.email}
+                  onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
+                  placeholder="you@example.com"
+                  autoComplete="username"
                   required
                 />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword((current) => !current)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  title={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+              </label>
+
+              <label>
+                <span>Password</span>
+                <div className="password-input-wrap">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={loginForm.password}
+                    onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
+                    placeholder="Enter your password"
+                    autoComplete="current-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowPassword((current) => !current)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </label>
+
+              <button type="submit" className="primary-button full-width login-submit" disabled={loading}>
+                {loading ? "Signing in..." : "Sign in"}
+              </button>
+            </form>
+          ) : (
+            <form className="login-form signup-form" onSubmit={handleSignupSubmit}>
+              <div className="signup-information">
+                <ShieldCheck size={19} />
+                <p>
+                  New member registrations are reviewed and approved by club staff before access is granted.
+                </p>
               </div>
-            </label>
 
-            {error && <div className="form-error" role="alert">{error}</div>}
+              <label>
+                <span>Full Name</span>
+                <input
+                  type="text"
+                  value={signupForm.name}
+                  onChange={(event) => setSignupForm((current) => ({ ...current, name: event.target.value }))}
+                  placeholder="e.g. Alex Johnson"
+                  autoComplete="name"
+                  required
+                />
+              </label>
 
-            <button type="submit" className="primary-button full-width login-submit" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in"}
-            </button>
-          </form>
+              <label>
+                <span>Email address</span>
+                <input
+                  type="email"
+                  value={signupForm.email}
+                  onChange={(event) => setSignupForm((current) => ({ ...current, email: event.target.value }))}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  required
+                />
+              </label>
+
+              <label>
+                <span>Password (minimum 8 characters)</span>
+                <div className="password-input-wrap">
+                  <input
+                    type={showSignupPassword ? "text" : "password"}
+                    value={signupForm.password}
+                    onChange={(event) => setSignupForm((current) => ({ ...current, password: event.target.value }))}
+                    placeholder="Create a strong password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowSignupPassword((current) => !current)}
+                    aria-label={showSignupPassword ? "Hide password" : "Show password"}
+                    title={showSignupPassword ? "Hide password" : "Show password"}
+                  >
+                    {showSignupPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </label>
+
+              <label>
+                <span>Confirm Password</span>
+                <input
+                  type={showSignupPassword ? "text" : "password"}
+                  value={signupForm.confirmPassword}
+                  onChange={(event) => setSignupForm((current) => ({ ...current, confirmPassword: event.target.value }))}
+                  placeholder="Re-enter your password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+              </label>
+
+              <div className="signup-preferences-form">
+                <label>
+                  <span>Generation / Batch Preference</span>
+                  <select
+                    value={signupForm.requestedBatchId}
+                    onChange={(event) => setSignupForm((current) => ({ ...current, requestedBatchId: event.target.value }))}
+                    className="signup-batch-select"
+                  >
+                    <option value="">-- Select Generation / Batch (Optional) --</option>
+                    {batches.map((batch) => (
+                      <option key={batch.id} value={batch.id}>
+                        {batch.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span>Student ID (Optional)</span>
+                  <input
+                    type="text"
+                    value={signupForm.studentId}
+                    onChange={(event) => setSignupForm((current) => ({ ...current, studentId: event.target.value }))}
+                    placeholder="e.g. 2024-CS-042"
+                    maxLength={50}
+                  />
+                </label>
+              </div>
+
+              <button type="submit" className="primary-button full-width login-submit" disabled={loading}>
+                {loading ? "Submitting registration..." : "Submit Registration Request"}
+              </button>
+            </form>
+          )}
         </div>
         <div className="login-form-foot"><ShieldCheck size={15} /> Protected account access</div>
       </section>
@@ -167,30 +386,61 @@ function MemberShell({ user, onLogout, showToast, children }) {
       <header className="member-header">
         <div className="member-brand">
           <img className="club-brand-logo" src="/oyster-kode-logo.png" alt="Oyster Kode Club" />
-          <div>
-            <p className="eyebrow">GeoAttend</p>
-            <h1>Attendance</h1>
+          <div className="member-brand-copy">
+            <span className="eyebrow">GeoAttend</span>
+            <h1>Member Attendance</h1>
           </div>
         </div>
 
-        <nav className="member-nav" aria-label="Member navigation">
-          <NavLink to="/member" end>Check in</NavLink>
-          <NavLink to="/member/attendance"><History size={16} /> My history</NavLink>
+        <nav className="member-nav desktop-only" aria-label="Member navigation">
+          <NavLink to="/member" end className={({ isActive }) => (isActive ? "active" : "")}>
+            <MapPin size={16} /> Live Check-in
+          </NavLink>
+          <NavLink to="/member/attendance" className={({ isActive }) => (isActive ? "active" : "")}>
+            <History size={16} /> My History
+          </NavLink>
         </nav>
 
         <div className="member-header-actions">
-          <div className="user-pill">
-            <span className="user-avatar">{user?.name?.charAt(0)?.toUpperCase() || "U"}</span>
-            <div>
+          <div className="user-pill" title={`${user?.name || "Member"} (Member)`}>
+            <span className="user-avatar">{user?.name?.charAt(0)?.toUpperCase() || "M"}</span>
+            <div className="user-pill-text">
               <strong>{user?.name || "Member"}</strong>
-              <small>{user?.role || "MEMBER"}</small>
+              <small className="role-badge role-member">Member</small>
             </div>
           </div>
-          <button type="button" className="logout-button member-logout" onClick={onLogout}>Sign out</button>
+          <button
+            type="button"
+            className="logout-button member-logout"
+            onClick={onLogout}
+            title="Sign out of GeoAttend"
+          >
+            <LogOut size={16} />
+            <span className="logout-text">Sign out</span>
+          </button>
         </div>
       </header>
 
       <main className="member-page">{children}</main>
+
+      {/* Mobile Bottom Navigation Bar for thumb navigation on phones */}
+      <nav className="member-mobile-bottom-nav" aria-label="Mobile Navigation">
+        <NavLink
+          to="/member"
+          end
+          className={({ isActive }) => `mobile-bottom-nav-link ${isActive ? "active" : ""}`}
+        >
+          <MapPin size={20} />
+          <span>Live Check-in</span>
+        </NavLink>
+        <NavLink
+          to="/member/attendance"
+          className={({ isActive }) => `mobile-bottom-nav-link ${isActive ? "active" : ""}`}
+        >
+          <History size={20} />
+          <span>My History</span>
+        </NavLink>
+      </nav>
     </div>
   );
 }
@@ -297,15 +547,40 @@ function AppContent() {
           path="/members"
           element={
             <ProtectedRoute user={user}>
-              <AppShell
-                user={user}
-                title="Members"
-                onLogout={handleLogout}
-                sidebarOpen={sidebarOpen}
-                setSidebarOpen={setSidebarOpen}
-              >
-                <Members user={user} showToast={showToast} />
-              </AppShell>
+              {user?.role === "MEMBER" ? (
+                <Navigate to="/member" replace />
+              ) : (
+                <AppShell
+                  user={user}
+                  title="Members"
+                  onLogout={handleLogout}
+                  sidebarOpen={sidebarOpen}
+                  setSidebarOpen={setSidebarOpen}
+                >
+                  <Members user={user} showToast={showToast} />
+                </AppShell>
+              )}
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/batches"
+          element={
+            <ProtectedRoute user={user}>
+              {user?.role === "MEMBER" ? (
+                <Navigate to="/member" replace />
+              ) : (
+                <AppShell
+                  user={user}
+                  title="Batches & Generations"
+                  onLogout={handleLogout}
+                  sidebarOpen={sidebarOpen}
+                  setSidebarOpen={setSidebarOpen}
+                >
+                  <Batches user={user} showToast={showToast} />
+                </AppShell>
+              )}
             </ProtectedRoute>
           }
         />
