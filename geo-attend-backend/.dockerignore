@@ -1,0 +1,38 @@
+# ==============================================================================
+# Docker Ignore - GeoAttend Backend
+# ==============================================================================
+
+# Secrets and local environment files
+.env
+.env.*
+*.env
+
+# Git metadata
+.git/
+.gitignore
+.gitattributes
+
+# Build outputs and cache
+target/
+*.jar
+*.war
+
+# IDE and editor workspaces
+.idea/
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+.apt_generated/
+*.iml
+*.ipr
+*.iws
+
+# Logs
+*.log
+logs/
+
+# Miscellaneous
+HELP.md
+mvnw.cmd

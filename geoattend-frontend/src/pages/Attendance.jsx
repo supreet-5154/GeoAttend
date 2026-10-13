@@ -561,7 +561,7 @@ export default function Attendance({ user, showToast }) {
                 className="primary-button fast-checkin-btn"
                 onClick={() => setShowFastCheckIn(true)}
               >
-                <UserCheck size={18} />
+                <UserCheck size={16} />
                 <span>Fast Manual Check-in</span>
               </button>
 
@@ -574,7 +574,8 @@ export default function Attendance({ user, showToast }) {
                   setShowModal(true);
                 }}
               >
-                <Plus size={16} /> Custom Entry
+                <Plus size={16} />
+                <span>Custom Entry</span>
               </button>
             </>
           )}
@@ -582,7 +583,7 @@ export default function Attendance({ user, showToast }) {
       </div>
 
       {/* Tabs Bar: Records / Review Queue / Location Audit */}
-      <div className="auth-mode-switch attendance-nav-tabs" role="tablist">
+      <div className="attendance-nav-tabs" role="tablist">
         <button
           type="button"
           role="tab"
@@ -591,7 +592,8 @@ export default function Attendance({ user, showToast }) {
           onClick={() => setActiveTab("records")}
         >
           <FileSpreadsheet size={16} />
-          <span>Attendance Records ({records.length})</span>
+          <span>Attendance Records</span>
+          <span className="tab-pill-badge neutral">{records.length}</span>
         </button>
 
         <button
@@ -603,8 +605,10 @@ export default function Attendance({ user, showToast }) {
         >
           <ShieldAlert size={16} />
           <span>Needs Review</span>
-          {reviewRecords.length > 0 && (
+          {reviewRecords.length > 0 ? (
             <span className="tab-pill-badge warning">{reviewRecords.length}</span>
+          ) : (
+            <span className="tab-pill-badge neutral">0</span>
           )}
         </button>
 
@@ -617,7 +621,8 @@ export default function Attendance({ user, showToast }) {
             onClick={() => setActiveTab("audit")}
           >
             <Compass size={16} />
-            <span>GPS Audit Log ({locationAudit.length})</span>
+            <span>GPS Audit Log</span>
+            <span className="tab-pill-badge neutral">{locationAudit.length}</span>
           </button>
         )}
       </div>

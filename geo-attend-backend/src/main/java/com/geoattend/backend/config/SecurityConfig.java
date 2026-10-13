@@ -1,7 +1,9 @@
 package com.geoattend.backend.config;
 
 import com.geoattend.backend.security.JwtAuthenticationFilter;
+import java.util.ArrayList;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,6 +19,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Value("${cors.allowed-origins:}")
+    private String configuredCorsOrigins;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter) {
@@ -112,18 +117,48 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(
-                List.of("http://localhost:5173", "http://localhost:5174", "http://localhost:5175")
-        );
+        List<String> origins = new ArrayList<>(List.of(
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:5175",
+                "http://localhost:3000"
+        ));
+
+        List<String> originPatterns = new ArrayList<>();
+
+        if (configuredCorsOrigins != null && !configuredCorsOrigins.isBlank()) {
+            String[] parts = configuredCorsOrigins.split(",");
+            for (String part : parts) {
+                String trimmed = part.trim();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                if (trimmed.contains("*")) {
+                    originPatterns.add(trimmed);
+                } else if (!origins.contains(trimmed)) {
+                    origins.add(trimmed);
+                }
+            }
+        }
+
+        configuration.setAllowedOrigins(origins);
+        if (!originPatterns.isEmpty()) {
+            configuration.setAllowedOriginPatterns(originPatterns);
+        }
 
         configuration.setAllowedMethods(
-                List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD")
         );
 
         configuration.setAllowedHeaders(
                 List.of("*")
         );
 
+        configuration.setExposedHeaders(
+                List.of("Authorization", "X-Total-Count")
+        );
+
+        // Security rule: credentials are not enabled with wildcard origins
         configuration.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source =

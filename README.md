@@ -310,7 +310,7 @@ erDiagram
 | Method | Endpoint | Auth | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/sessions` | All Roles | List upcoming, active, and completed sessions. |
-| `POST` | `/api/sessions` | Admin | Create session with venue center coordinate and radius. |
+| `POST` | `/api/sessions` | Staff, Admin | Create session with venue center coordinate and radius. |
 | `PUT` | `/api/sessions/{id}` | Admin | Update session parameters or active geofence boundary. |
 | `DELETE`| `/api/sessions/{id}` | Admin | Delete an upcoming or completed session. |
 
@@ -318,7 +318,8 @@ erDiagram
 | Method | Endpoint | Auth | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/attendance` | Staff, Admin | Query authoritative attendance records with filters & pagination. |
-| `POST` | `/api/attendance/manual` | Staff, Admin | 1-click manual attendance entry for active sessions. |
+| `POST` | `/api/attendance` | Staff, Admin | Custom attendance record entry with optional manual coordinates. |
+| `POST` | `/api/attendance/manual` | Staff, Admin | 1-click fast manual attendance entry for active sessions. |
 | `POST` | `/api/attendance/self` | Member | Record self-check from client location in an active session. |
 | `POST` | `/api/attendance/tracking/start` | Member | Initiate 10-slot tracking lifecycle for a session. |
 | `POST` | `/api/attendance/location-check` | Member | Submit periodic interval coordinates for geofence validation. |
@@ -367,19 +368,30 @@ FLUSH PRIVILEGES;
 > Database tables, indexes, and schema updates are automatically applied on startup via `DatabaseSchemaInitializer.java` and `schema.sql`.
 
 ### 8.3 Backend Configuration & Launch
-1. Verify configuration in `geo-attend-backend/src/main/resources/application.properties`:
-   ```properties
-   server.port=8081
-   spring.datasource.url=jdbc:mysql://localhost:3306/geoattend
-   spring.datasource.username=geoattend_user
-   spring.datasource.password=GeoAttend@123
-   jwt.secret=GeoAttendSuperSecretKeyForDevelopmentOnly123456789
-   ```
-
-2. Run the Spring Boot backend:
+1. Configure environment variables. Sensitive credentials are externalized and must be provided via environment variables (see `geo-attend-backend/.env.example`):
    ```bash
    cd geo-attend-backend
-   ./mvnw spring-boot:run
+   cp .env.example .env
+   # Edit .env with your local MySQL password and a 256-bit JWT signing secret
+   ```
+
+   The backend resolves configuration from `application.properties` using environment placeholders:
+   ```properties
+   server.port=8081
+   spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/geoattend}
+   spring.datasource.username=${SPRING_DATASOURCE_USERNAME:geoattend_user}
+   spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
+   jwt.secret=${JWT_SECRET}
+   ```
+
+2. Export variables and start the Spring Boot backend:
+   ```bash
+   # Export from your local .env file (already git-ignored) and launch
+   export $(grep -v '^#' .env | xargs) && ./mvnw spring-boot:run
+   ```
+   *Alternatively, pass variables inline for the process:*
+   ```bash
+   SPRING_DATASOURCE_PASSWORD="<your_mysql_password>" JWT_SECRET="<your_jwt_secret_min_32_bytes>" ./mvnw spring-boot:run
    ```
    *The backend will boot up at `http://localhost:8081`.*
 
@@ -399,6 +411,9 @@ FLUSH PRIVILEGES;
 ---
 
 ## 9. Seed Credentials for Local Testing
+
+> [!NOTE]
+> The accounts below are mock club user records pre-seeded in the local database for testing role workflows. They are not server credentials, infrastructure passwords, or API keys.
 
 | Role | Email | Password | Primary Workflow |
 | :--- | :--- | :--- | :--- |

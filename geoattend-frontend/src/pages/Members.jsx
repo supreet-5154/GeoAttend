@@ -398,7 +398,7 @@ export default function Members({ user, showToast }) {
       </div>
 
       {/* Tabs navigation */}
-      <div className="auth-mode-switch member-view-tabs" role="tablist">
+      <div className="member-view-tabs" role="tablist">
         <button
           type="button"
           role="tab"
@@ -406,7 +406,9 @@ export default function Members({ user, showToast }) {
           className={activeTab === "members" ? "active" : ""}
           onClick={() => setActiveTab("members")}
         >
-          <Users size={16} /> Club Members ({memberTotalElements})
+          <Users size={16} />
+          <span>Club Members</span>
+          <span className="tab-pill-badge neutral">{memberTotalElements}</span>
         </button>
 
         {canReviewSignups && (
@@ -417,8 +419,13 @@ export default function Members({ user, showToast }) {
             className={activeTab === "queue" ? "active" : ""}
             onClick={() => setActiveTab("queue")}
           >
-            <UserCheck size={16} /> Registration Queue ({queueTotalElements})
-            {pendingCount > 0 && <span className="tab-pill-badge warning">{pendingCount}</span>}
+            <UserCheck size={16} />
+            <span>Registration Queue</span>
+            {pendingCount > 0 ? (
+              <span className="tab-pill-badge warning">{pendingCount}</span>
+            ) : (
+              <span className="tab-pill-badge neutral">{queueTotalElements}</span>
+            )}
           </button>
         )}
       </div>

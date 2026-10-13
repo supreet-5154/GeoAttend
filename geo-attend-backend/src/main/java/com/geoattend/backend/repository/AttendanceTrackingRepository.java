@@ -4,9 +4,12 @@ import com.geoattend.backend.model.AttendanceTracking;
 import com.geoattend.backend.model.AttendanceLocationAudit;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -100,20 +103,50 @@ public class AttendanceTrackingRepository {
     }
 
     public Long startTracking(Long memberId, Long sessionId, LocalDateTime checkedAt) {
-        jdbcTemplate.update(
-                """
-                INSERT INTO attendance_tracking
-                    (session_id, member_id, started_at, last_check_at, total_checks, inside_checks, status)
-                VALUES (?, ?, ?, ?, 0, 0, 'WAITING_FOR_GEOFENCE')
-                """,
-                sessionId,
-                memberId,
-                checkedAt,
-                checkedAt
-        );
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            var ps = connection.prepareStatement(
+                    """
+                    INSERT INTO attendance_tracking
+                        (session_id, member_id, started_at, last_check_at, total_checks, inside_checks, status)
+                    VALUES (?, ?, ?, ?, 0, 0, 'WAITING_FOR_GEOFENCE')
+                    """,
+                    new String[]{"id"}
+            );
+            ps.setLong(1, sessionId);
+            ps.setLong(2, memberId);
+            ps.setTimestamp(3, Timestamp.valueOf(checkedAt));
+            ps.setTimestamp(4, Timestamp.valueOf(checkedAt));
+            return ps;
+        }, keyHolder);
 
-        Long trackingId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
-        return trackingId;
+        Number key = null;
+        try {
+            key = keyHolder.getKey();
+        } catch (Exception ignored) {
+            // Driver may return a map of keys
+        }
+        if (key != null) {
+            return key.longValue();
+        }
+        if (keyHolder.getKeys() != null) {
+            for (var entry : keyHolder.getKeys().entrySet()) {
+                if ("id".equalsIgnoreCase(entry.getKey()) && entry.getValue() instanceof Number n) {
+                    return n.longValue();
+                }
+            }
+        }
+        // Fallback: query by unique composite key (session_id, member_id)
+        Long trackingId = jdbcTemplate.queryForObject(
+                "SELECT id FROM attendance_tracking WHERE session_id = ? AND member_id = ? ORDER BY id DESC LIMIT 1",
+                Long.class,
+                sessionId,
+                memberId
+        );
+        if (trackingId != null) {
+            return trackingId;
+        }
+        throw new IllegalStateException("Failed to retrieve generated ID for attendance tracking record");
     }
 
     public void recordLocationCheck(Long trackingId, int checkNumber, LocalDateTime checkedAt,

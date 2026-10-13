@@ -3216,6 +3216,58 @@ h4 {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+.page-header-actions .primary-button,
+.page-header-actions .secondary-button,
+.fast-checkin-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 16px !important;
+  border-radius: 8px !important;
+  font-size: 0.84rem !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  line-height: 1 !important;
+}
+
+.page-header-actions .primary-button,
+.fast-checkin-btn {
+  background: #171717 !important;
+  color: #ffffff !important;
+  border: 1px solid #171717 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.page-header-actions .primary-button:hover,
+.fast-checkin-btn:hover {
+  background: #2d3250 !important;
+  border-color: #2d3250 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(45, 50, 80, 0.18) !important;
+}
+
+.page-header-actions .secondary-button {
+  background: #ffffff !important;
+  color: #2d3250 !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.page-header-actions .secondary-button:hover {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06) !important;
 }
 
 .sort-control {
@@ -3657,19 +3709,46 @@ h4 {
   justify-content: center;
   z-index: 1000;
   padding: 16px;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .modal-card {
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
+  max-height: calc(100vh - 36px);
   background: var(--surface);
   border-radius: 10px;
   border: 1px solid var(--line);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   animation: modalFadeIn 0.18s ease-out;
+  box-sizing: border-box;
+  margin: auto;
+}
+
+.modal-card.large {
+  max-width: 680px;
+}
+
+.modal-card::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-card::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.modal-card::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 @keyframes modalFadeIn {
@@ -5406,7 +5485,8 @@ h4 {
 }
 
 /* 3. Segmented Navigation Tabs */
-.member-view-tabs {
+.member-view-tabs,
+.attendance-nav-tabs {
   display: inline-flex !important;
   grid-template-columns: none !important;
   gap: 6px !important;
@@ -5418,7 +5498,8 @@ h4 {
   max-width: fit-content !important;
 }
 
-.member-view-tabs button {
+.member-view-tabs button,
+.attendance-nav-tabs button {
   display: inline-flex !important;
   align-items: center !important;
   gap: 8px !important;
@@ -5432,14 +5513,17 @@ h4 {
   font-weight: 600 !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
+  white-space: nowrap !important;
 }
 
-.member-view-tabs button:hover:not(.active) {
+.member-view-tabs button:hover:not(.active),
+.attendance-nav-tabs button:hover:not(.active) {
   background: rgba(255, 255, 255, 0.6) !important;
   color: #1e3325 !important;
 }
 
-.member-view-tabs button.active {
+.member-view-tabs button.active,
+.attendance-nav-tabs button.active {
   background: #ffffff !important;
   color: #143220 !important;
   box-shadow: 0 1px 4px rgba(20, 50, 32, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04) !important;
@@ -5455,6 +5539,18 @@ h4 {
   border-radius: 10px;
   font-size: 0.72rem;
   font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.tab-pill-badge.neutral {
+  background: #e2e8df;
+  color: #4a5c50;
+}
+
+.member-view-tabs button.active .tab-pill-badge.neutral,
+.attendance-nav-tabs button.active .tab-pill-badge.neutral {
+  background: #e3ede5;
+  color: #163d27;
 }
 
 .tab-pill-badge.warning {
@@ -6038,6 +6134,8 @@ h4 {
     border-radius: 16px 16px 0 0 !important;
     padding: 20px 16px calc(20px + env(safe-area-inset-bottom)) !important;
     margin: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .modal-actions {

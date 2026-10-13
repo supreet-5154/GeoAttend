@@ -20,9 +20,29 @@ public class JwtService {
 
     @PostConstruct
     public void init() {
-        secretKey = Keys.hmacShaKeyFor(
-                secret.getBytes(StandardCharsets.UTF_8)
-        );
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "JWT configuration error: 'jwt.secret' (or environment variable 'JWT_SECRET') is not configured. "
+                            + "Please provide a cryptographically secure key of at least 256 bits (32 bytes in UTF-8)."
+            );
+        }
+
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException(
+                    "JWT configuration error: 'jwt.secret' (or environment variable 'JWT_SECRET') has insufficient entropy ("
+                            + (keyBytes.length * 8) + " bits provided). JJWT requires at least 256 bits (32 bytes in UTF-8) for HMAC-SHA256. "
+                            + "Please generate a key with at least 32 UTF-8 bytes (e.g., using 'openssl rand -base64 32')."
+            );
+        }
+
+        try {
+            secretKey = Keys.hmacShaKeyFor(keyBytes);
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "JWT configuration error: Failed to initialize HMAC-SHA signing key: " + e.getMessage(), e
+            );
+        }
     }
 
     public String generateToken(ClubUser user) {

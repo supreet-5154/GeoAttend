@@ -92,7 +92,7 @@ public class MemberSignupRepository {
             FROM member_signups s
             LEFT JOIN batches b ON s.requested_batch_id = b.id
             WHERE s.id = ? AND s.status = 'PENDING'
-            FOR UPDATE
+            FOR UPDATE OF s
         """;
         try {
             return Optional.ofNullable(jdbcTemplate.queryForObject(sql, signupMapper, id));
