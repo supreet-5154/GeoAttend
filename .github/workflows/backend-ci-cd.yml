@@ -1,0 +1,91 @@
+name: Backend CI / CD
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'geo-attend-backend/**'
+      - '.github/workflows/backend-ci-cd.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'geo-attend-backend/**'
+      - '.github/workflows/backend-ci-cd.yml'
+
+defaults:
+  run:
+    working-directory: geo-attend-backend
+
+jobs:
+  test-and-verify:
+    name: Test & Build Container
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: geoattend_test
+          POSTGRES_USER: geoattend_user
+          POSTGRES_PASSWORD: testpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Eclipse Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Run Maven Tests (PostgreSQL integration)
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/geoattend_test
+          SPRING_DATASOURCE_USERNAME: geoattend_user
+          SPRING_DATASOURCE_PASSWORD: testpassword
+          SPRING_SQL_INIT_MODE: always
+          SPRING_SQL_INIT_PLATFORM: postgresql
+          SCHEMA_INITIALIZER_ENABLED: false
+          JWT_SECRET: EeiJ1zlLGora3wSpAOQVVnXCXf3nLT/lUlzHNnPduI0=
+        run: ./mvnw clean test
+
+      - name: Verify Multi-Stage Dockerfile Build
+        run: docker build -t geo-attend-backend:ci .
+
+  deploy-to-render:
+    name: Deploy to Render
+    needs: test-and-verify
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render Deploy Hook
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "::warning ::RENDER_DEPLOY_HOOK secret is not configured in GitHub Repository Secrets."
+            echo "Render will fall back to its Git commit watcher if auto-deploy is enabled."
+            echo "To enable direct webhook triggers, add RENDER_DEPLOY_HOOK under Settings -> Secrets and variables -> Actions."
+          else
+            echo "Triggering Render deployment..."
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$RENDER_DEPLOY_HOOK")
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            echo "Render Response ($HTTP_CODE): $BODY"
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "Deployment trigger succeeded!"
+            else
+              echo "Deployment trigger failed with status $HTTP_CODE"
+              exit 1
+            fi
+          fi
