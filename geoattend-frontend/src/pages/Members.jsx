@@ -555,26 +555,6 @@ export default function Members({ user, showToast }) {
                 ))}
               </select>
 
-              <div className="date-filter-inline">
-                <label className="date-label">Submitted</label>
-                <input
-                  type="date"
-                  className="filter-date-input"
-                  value={queueFromDate}
-                  onChange={(e) => setQueueFromDate(e.target.value)}
-                  aria-label="Submitted from date"
-                  title="Submitted on or after"
-                />
-                <span className="date-sep">to</span>
-                <input
-                  type="date"
-                  className="filter-date-input"
-                  value={queueToDate}
-                  onChange={(e) => setQueueToDate(e.target.value)}
-                  aria-label="Submitted to date"
-                  title="Submitted on or before"
-                />
-              </div>
             </div>
           </div>
 
