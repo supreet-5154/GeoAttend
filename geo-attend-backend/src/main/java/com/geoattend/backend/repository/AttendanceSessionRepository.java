@@ -107,12 +107,17 @@ public class AttendanceSessionRepository {
         }
         if (status != null && !status.isBlank() && !"all".equalsIgnoreCase(status)) {
             String s = status.trim().toUpperCase();
+            java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata"));
             if ("UPCOMING".equals(s)) {
-                sql.append(" AND start_time > CURRENT_TIMESTAMP");
+                sql.append(" AND start_time > ?");
+                params.add(now);
             } else if ("ACTIVE".equals(s)) {
-                sql.append(" AND (start_time <= CURRENT_TIMESTAMP AND end_time >= CURRENT_TIMESTAMP)");
+                sql.append(" AND (start_time <= ? AND end_time >= ?)");
+                params.add(now);
+                params.add(now);
             } else if ("COMPLETED".equals(s)) {
-                sql.append(" AND end_time < CURRENT_TIMESTAMP");
+                sql.append(" AND end_time < ?");
+                params.add(now);
             }
         }
         if (startDate != null) {

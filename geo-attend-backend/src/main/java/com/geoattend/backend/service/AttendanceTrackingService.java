@@ -10,6 +10,7 @@ import com.geoattend.backend.repository.AttendanceRepository;
 import com.geoattend.backend.repository.AttendanceSessionRepository;
 import com.geoattend.backend.repository.AttendanceTrackingRepository;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AttendanceTrackingService {
+
+    public static final ZoneId CLUB_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final AttendanceTrackingRepository trackingRepository;
     private final AttendanceSessionRepository sessionRepository;
@@ -37,7 +40,7 @@ public class AttendanceTrackingService {
             throw new IllegalArgumentException("Attendance session does not exist.");
         }
         AttendanceSession session = sessionRepository.getSessionById(sessionId);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(CLUB_ZONE);
         if (now.plusSeconds(60).isBefore(session.getStartTime()) || !now.isBefore(session.getEndTime())) {
             throw new IllegalArgumentException("Tracking can only start during an active session.");
         }
@@ -65,7 +68,7 @@ public class AttendanceTrackingService {
         }
 
         AttendanceSession session = sessionRepository.getSessionById(request.getSessionId());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(CLUB_ZONE);
         if (now.plusSeconds(60).isBefore(session.getStartTime()) || !now.isBefore(session.getEndTime())) {
             throw new IllegalArgumentException("Location checks are only accepted during an active session.");
         }
@@ -156,7 +159,7 @@ public class AttendanceTrackingService {
 
     @Scheduled(fixedDelay = 30000, initialDelay = 10000)
     public void finalizeEndedSessions() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(CLUB_ZONE);
         for (AttendanceTracking tracking : trackingRepository.findDueForFinalization(now)) {
             try {
                 finalizeTracking(tracking, now);
@@ -198,8 +201,8 @@ public class AttendanceTrackingService {
             tracking.getSessionStartTime(), tracking.getSessionEndTime()));
         boolean isActive = "TRACKING".equals(tracking.getStatus())
                 || "WAITING_FOR_GEOFENCE".equals(tracking.getStatus());
-        LocalDateTime until = isActive && LocalDateTime.now().isBefore(tracking.getSessionEndTime())
-                ? LocalDateTime.now() : tracking.getSessionEndTime();
+        LocalDateTime until = isActive && LocalDateTime.now(CLUB_ZONE).isBefore(tracking.getSessionEndTime())
+                ? LocalDateTime.now(CLUB_ZONE) : tracking.getSessionEndTime();
         tracking.setExpectedChecks(AttendanceTrackingPolicy.expectedChecks(
                 tracking.getStartedAt(), tracking.getSessionStartTime(), until));
     }

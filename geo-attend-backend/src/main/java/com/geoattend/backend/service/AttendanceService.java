@@ -11,11 +11,14 @@ import com.geoattend.backend.security.ClubUser;
 import com.geoattend.backend.model.PagedResponse;
 import com.geoattend.backend.util.DateTimeFilterUtils;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AttendanceService {
+
+    public static final ZoneId CLUB_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final AttendanceRepository attendanceRepository;
     private final MemberRepository memberRepository;
@@ -58,7 +61,7 @@ public class AttendanceService {
             throw new RuntimeException("This session has no geofence configured. Ask an administrator to update the session location.");
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(CLUB_ZONE);
 
         if (now.plusSeconds(60).isBefore(session.getStartTime())
                 || now.isAfter(session.getEndTime())) {
