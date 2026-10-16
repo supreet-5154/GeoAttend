@@ -39,6 +39,9 @@ RUN groupadd -g 10001 appgroup && \
 # Copy executable jar from builder stage with proper ownership
 COPY --from=builder --chown=appuser:appgroup /build/target/*.jar /app/app.jar
 
+# Set application timezone to Asia/Kolkata for Oyster Kode Club
+ENV TZ=Asia/Kolkata
+
 # Render assigns dynamic port via PORT environment variable (defaults to 8080)
 ENV PORT=8080
 EXPOSE 8080
@@ -50,6 +53,7 @@ USER appuser
 ENTRYPOINT ["java", \
     "-XX:+UseContainerSupport", \
     "-XX:MaxRAMPercentage=75.0", \
+    "-Duser.timezone=Asia/Kolkata", \
     "-Djava.security.egd=file:/dev/./urandom", \
     "-jar", \
     "/app/app.jar"]

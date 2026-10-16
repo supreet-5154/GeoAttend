@@ -60,7 +60,7 @@ public class AttendanceService {
 
         LocalDateTime now = LocalDateTime.now();
 
-        if (now.isBefore(session.getStartTime())
+        if (now.plusSeconds(60).isBefore(session.getStartTime())
                 || now.isAfter(session.getEndTime())) {
 
             throw new RuntimeException("Attendance session is not active");

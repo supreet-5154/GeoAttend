@@ -38,7 +38,7 @@ public class AttendanceTrackingService {
         }
         AttendanceSession session = sessionRepository.getSessionById(sessionId);
         LocalDateTime now = LocalDateTime.now();
-        if (now.isBefore(session.getStartTime()) || !now.isBefore(session.getEndTime())) {
+        if (now.plusSeconds(60).isBefore(session.getStartTime()) || !now.isBefore(session.getEndTime())) {
             throw new IllegalArgumentException("Tracking can only start during an active session.");
         }
         if (!session.isLocationEnabled()) {
@@ -66,7 +66,7 @@ public class AttendanceTrackingService {
 
         AttendanceSession session = sessionRepository.getSessionById(request.getSessionId());
         LocalDateTime now = LocalDateTime.now();
-        if (now.isBefore(session.getStartTime()) || !now.isBefore(session.getEndTime())) {
+        if (now.plusSeconds(60).isBefore(session.getStartTime()) || !now.isBefore(session.getEndTime())) {
             throw new IllegalArgumentException("Location checks are only accepted during an active session.");
         }
         if (!session.isLocationEnabled()) {
