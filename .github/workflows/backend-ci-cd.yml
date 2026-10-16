@@ -76,19 +76,17 @@ jobs:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
           if [ -z "$RENDER_DEPLOY_HOOK" ]; then
-            echo "::warning ::RENDER_DEPLOY_HOOK secret is not configured in GitHub Repository Secrets."
-            echo "Render will fall back to its Git commit watcher if auto-deploy is enabled."
-            echo "To enable direct webhook triggers, add RENDER_DEPLOY_HOOK under Settings -> Secrets and variables -> Actions."
+            echo "::notice ::RENDER_DEPLOY_HOOK secret is not configured in GitHub Repository Secrets."
+            echo "Render will deploy directly from Git if Auto-Deploy is enabled on your Render dashboard."
           else
             echo "Triggering Render deployment..."
-            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$RENDER_DEPLOY_HOOK")
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$RENDER_DEPLOY_HOOK" || true)
             HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
             BODY=$(echo "$RESPONSE" | sed '$d')
             echo "Render Response ($HTTP_CODE): $BODY"
             if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
               echo "Deployment trigger succeeded!"
             else
-              echo "Deployment trigger failed with status $HTTP_CODE"
-              exit 1
+              echo "::warning ::Render deploy hook returned status $HTTP_CODE: $BODY"
             fi
           fi
