@@ -1,6 +1,7 @@
 package com.geoattend.backend.config;
 
 import com.geoattend.backend.security.JwtAuthenticationFilter;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -124,7 +125,9 @@ public class SecurityConfig {
                 "http://localhost:3000"
         ));
 
-        List<String> originPatterns = new ArrayList<>();
+        List<String> originPatterns = new ArrayList<>(List.of(
+                "https://*.vercel.app"
+        ));
 
         if (configuredCorsOrigins != null && !configuredCorsOrigins.isBlank()) {
             String[] parts = configuredCorsOrigins.split(",");
@@ -134,9 +137,27 @@ public class SecurityConfig {
                     continue;
                 }
                 if (trimmed.contains("*")) {
-                    originPatterns.add(trimmed);
-                } else if (!origins.contains(trimmed)) {
-                    origins.add(trimmed);
+                    if (!originPatterns.contains(trimmed)) {
+                        originPatterns.add(trimmed);
+                    }
+                } else {
+                    String cleanOrigin = trimmed;
+                    try {
+                        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                            URI uri = URI.create(trimmed);
+                            if (uri.getScheme() != null && uri.getAuthority() != null) {
+                                cleanOrigin = uri.getScheme() + "://" + uri.getAuthority();
+                            }
+                        } else {
+                            cleanOrigin = trimmed.replaceAll("/+$", "");
+                        }
+                    } catch (Exception ignored) {
+                        cleanOrigin = trimmed.replaceAll("/+$", "");
+                    }
+
+                    if (!origins.contains(cleanOrigin)) {
+                        origins.add(cleanOrigin);
+                    }
                 }
             }
         }
