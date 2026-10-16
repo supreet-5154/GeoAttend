@@ -28,8 +28,10 @@ jobs:
           POSTGRES_DB: geoattend_test
           POSTGRES_USER: geoattend_user
           POSTGRES_PASSWORD: testpassword
+          TZ: Asia/Kolkata
         ports:
           - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -49,6 +51,7 @@ jobs:
 
       - name: Run Maven Tests (PostgreSQL integration)
         env:
+          TZ: Asia/Kolkata
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/geoattend_test
           SPRING_DATASOURCE_USERNAME: geoattend_user
           SPRING_DATASOURCE_PASSWORD: testpassword

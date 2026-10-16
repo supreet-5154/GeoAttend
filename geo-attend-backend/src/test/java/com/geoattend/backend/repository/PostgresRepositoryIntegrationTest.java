@@ -67,9 +67,9 @@ class PostgresRepositoryIntegrationTest {
                 );
             }
 
-            if (!url.contains("5433") || !url.contains("geoattend_test")) {
+            if ((!url.contains("5433") && !url.contains("5432")) || !url.contains("geoattend_test")) {
                 throw new IllegalStateException(
-                        "SAFETY ABORT: Test datasource does not target the disposable local PostgreSQL instance (port 5433, db geoattend_test)! Target URL: " + url
+                        "SAFETY ABORT: Test datasource does not target the disposable local PostgreSQL instance (port 5432/5433, db geoattend_test)! Target URL: " + url
                 );
             }
 
