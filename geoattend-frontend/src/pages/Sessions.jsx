@@ -326,26 +326,6 @@ export default function Sessions({ user, showToast }) {
             <option value="COMPLETED">Completed</option>
           </select>
 
-          <div className="date-filter-inline">
-            <label className="date-label">Date</label>
-            <input
-              type="date"
-              className="filter-date-input"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              aria-label="Filter from date"
-              title="Scheduled from date"
-            />
-            <span className="date-sep">to</span>
-            <input
-              type="date"
-              className="filter-date-input"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              aria-label="Filter to date"
-              title="Scheduled to date"
-            />
-          </div>
         </div>
       </div>
 

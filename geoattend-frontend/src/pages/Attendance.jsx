@@ -717,24 +717,6 @@ export default function Attendance({ user, showToast }) {
                 <option value="ABSENT">Absent</option>
               </select>
 
-              <div className="date-filter-inline">
-                <label htmlFor="att-from-date">From:</label>
-                <input
-                  id="att-from-date"
-                  type="date"
-                  value={filters.fromDate}
-                  onChange={(e) => setFilters((curr) => ({ ...curr, fromDate: e.target.value }))}
-                  aria-label="From date"
-                />
-                <label htmlFor="att-to-date">To:</label>
-                <input
-                  id="att-to-date"
-                  type="date"
-                  value={filters.toDate}
-                  onChange={(e) => setFilters((curr) => ({ ...curr, toDate: e.target.value }))}
-                  aria-label="To date"
-                />
-              </div>
 
               <div className="sort-control" role="group" aria-label="Sort order">
                 <button
