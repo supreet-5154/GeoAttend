@@ -14,6 +14,11 @@ const authService = {
       body: JSON.stringify(payload),
       skipAuth: true,
     }),
+
+  refresh: async () =>
+    apiRequest("/api/auth/refresh", {
+      method: "POST",
+    }),
 };
 
 export default authService;

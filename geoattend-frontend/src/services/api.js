@@ -28,9 +28,106 @@ export const clearAuth = () => {
   localStorage.removeItem("user");
 };
 
+/**
+ * Decodes the expiration timestamp (in ms) from a standard JWT without external libraries.
+ */
+export const getTokenExpirationMs = (token) => {
+  if (!token || typeof token !== "string") return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+    const parsed = JSON.parse(jsonPayload);
+    return parsed.exp ? parsed.exp * 1000 : null;
+  } catch (e) {
+    return null;
+  }
+};
+
+// In-flight refresh promise singleton to prevent duplicate concurrent refresh requests
+let activeRefreshPromise = null;
+
+/**
+ * Attempts to silently refresh the JWT using the backend /api/auth/refresh endpoint.
+ */
+export const refreshSessionToken = async () => {
+  if (activeRefreshPromise) {
+    return activeRefreshPromise;
+  }
+
+  const currentToken = localStorage.getItem("token");
+  if (!currentToken) {
+    return null;
+  }
+
+  activeRefreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${currentToken}`,
+        },
+        body: JSON.stringify({ token: currentToken }),
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await safeJsonParse(response);
+      if (data && data.token) {
+        localStorage.setItem("token", data.token);
+
+        if (data.name && data.role) {
+          const existingUser = getStoredUser() || {};
+          const updatedUser = {
+            ...existingUser,
+            id: data.id ?? existingUser.id,
+            name: data.name,
+            email: data.email ?? existingUser.email,
+            role: data.role,
+          };
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+        }
+
+        window.dispatchEvent(new CustomEvent("geoattend:auth-refreshed", { detail: data }));
+        return data.token;
+      }
+      return null;
+    } catch (err) {
+      return null;
+    } finally {
+      activeRefreshPromise = null;
+    }
+  })();
+
+  return activeRefreshPromise;
+};
+
 export const apiRequest = async (endpoint, options = {}) => {
-  const { skipAuth = false, headers = {}, ...rest } = options;
-  const token = localStorage.getItem("token");
+  const { skipAuth = false, headers = {}, _isRetry = false, ...rest } = options;
+  let token = localStorage.getItem("token");
+
+  // Proactive Silent Refresh: If token is valid but expires in less than 30 minutes, refresh ahead of time
+  if (!skipAuth && token && !endpoint.includes("/api/auth/")) {
+    const expMs = getTokenExpirationMs(token);
+    const now = Date.now();
+    // If expiring within 30 minutes (or already expired within grace), refresh proactively
+    if (expMs && expMs - now < 30 * 60 * 1000) {
+      const refreshedToken = await refreshSessionToken();
+      if (refreshedToken) {
+        token = refreshedToken;
+      }
+    }
+  }
 
   const requestHeaders = {
     ...(rest.body ? { "Content-Type": "application/json" } : {}),
@@ -45,6 +142,26 @@ export const apiRequest = async (endpoint, options = {}) => {
     ...rest,
     headers: requestHeaders,
   });
+
+  // Reactive Interceptor: If a 401 is received, attempt one automatic silent refresh and replay the request
+  if (response.status === 401 && !skipAuth && !_isRetry && !endpoint.includes("/api/auth/")) {
+    const refreshedToken = await refreshSessionToken();
+    if (refreshedToken) {
+      return apiRequest(endpoint, {
+        ...options,
+        _isRetry: true,
+        headers: {
+          ...headers,
+          Authorization: `Bearer ${refreshedToken}`,
+        },
+      });
+    }
+
+    // Refresh failed or session expired beyond grace window
+    clearAuth();
+    window.dispatchEvent(new CustomEvent("geoattend:auth-expired"));
+    throw new Error("Your session has expired. Please log in again.");
+  }
 
   const data = await safeJsonParse(response);
 

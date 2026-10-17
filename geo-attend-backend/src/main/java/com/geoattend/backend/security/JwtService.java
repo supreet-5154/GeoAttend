@@ -45,6 +45,9 @@ public class JwtService {
         }
     }
 
+    public static final long TOKEN_VALIDITY_MS = 1000L * 60 * 60 * 24; // 24 hours
+    public static final long REFRESH_GRACE_PERIOD_MS = 1000L * 60 * 60 * 24 * 7; // 7 days
+
     public String generateToken(ClubUser user) {
 
         return Jwts.builder()
@@ -55,7 +58,7 @@ public class JwtService {
                 .expiration(
                         new Date(
                                 System.currentTimeMillis()
-                                        + 1000 * 60 * 60
+                                        + TOKEN_VALIDITY_MS
                         )
                 )
                 .signWith(secretKey)
@@ -94,6 +97,32 @@ public class JwtService {
 
             return true;
 
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public io.jsonwebtoken.Claims getClaimsEvenIfExpired(String token) {
+        try {
+            return Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (io.jsonwebtoken.ExpiredJwtException eje) {
+            return eje.getClaims();
+        }
+    }
+
+    public boolean canTokenBeRefreshed(String token) {
+        try {
+            io.jsonwebtoken.Claims claims = getClaimsEvenIfExpired(token);
+            if (claims == null || claims.getExpiration() == null) {
+                return false;
+            }
+            long expiryTime = claims.getExpiration().getTime();
+            long now = System.currentTimeMillis();
+            return now <= (expiryTime + REFRESH_GRACE_PERIOD_MS);
         } catch (Exception e) {
             return false;
         }

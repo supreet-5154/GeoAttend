@@ -472,6 +472,32 @@ function AppContent() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      clearAuth();
+      setUser(null);
+      navigate("/login");
+      showToast("Your session has expired. Please log in again.", "error");
+    };
+
+    const handleAuthRefreshed = (event) => {
+      if (event.detail) {
+        setUser((current) => ({
+          ...current,
+          ...event.detail,
+        }));
+      }
+    };
+
+    window.addEventListener("geoattend:auth-expired", handleAuthExpired);
+    window.addEventListener("geoattend:auth-refreshed", handleAuthRefreshed);
+
+    return () => {
+      window.removeEventListener("geoattend:auth-expired", handleAuthExpired);
+      window.removeEventListener("geoattend:auth-refreshed", handleAuthRefreshed);
+    };
+  }, [navigate]);
+
   const handleLogout = () => {
     clearAuth();
     setUser(null);

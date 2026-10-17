@@ -135,4 +135,64 @@ public class AuthController {
                 "localDateTimeNow", java.time.LocalDateTime.now().toString()
         ));
     }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        try {
+            String token = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                token = authHeader.substring(7).trim();
+            } else if (body != null && body.containsKey("token")) {
+                token = body.get("token");
+            }
+
+            if (token == null || token.isBlank()) {
+                return ResponseEntity.badRequest().body("Token is required to refresh session.");
+            }
+
+            if (!jwtService.canTokenBeRefreshed(token)) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                        .body("Session has expired beyond refresh window. Please log in again.");
+            }
+
+            io.jsonwebtoken.Claims claims = jwtService.getClaimsEvenIfExpired(token);
+            if (claims == null || claims.getSubject() == null) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                        .body("Invalid token payload.");
+            }
+
+            Long userId = Long.parseLong(claims.getSubject());
+            String role = claims.get("role", String.class);
+
+            String name = claims.get("name", String.class);
+            String email = null;
+
+            if ("MEMBER".equals(role)) {
+                com.geoattend.backend.model.Member member = memberRepository.getMemberById(userId);
+                name = member.getName();
+                email = member.getEmail();
+            } else {
+                ClubUser staffUser = clubUserRepository.getUserById(userId);
+                name = staffUser.getName();
+            }
+
+            ClubUser userToSign = new ClubUser(userId, name, role);
+            String newToken = jwtService.generateToken(userToSign);
+
+            LoginResponse response = new LoginResponse(
+                    userId,
+                    name,
+                    email,
+                    role,
+                    newToken
+            );
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body("Unable to refresh session. Please log in again.");
+        }
+    }
 }
