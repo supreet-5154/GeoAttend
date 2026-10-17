@@ -12,14 +12,13 @@ on:
       - 'geo-attend-backend/**'
       - '.github/workflows/backend-ci-cd.yml'
 
-defaults:
-  run:
-    working-directory: geo-attend-backend
-
 jobs:
   test-and-verify:
     name: Test & Build Container
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: geo-attend-backend
 
     services:
       postgres:
