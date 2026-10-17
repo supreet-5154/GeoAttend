@@ -58,6 +58,11 @@ public class AttendanceTrackingRepository {
         );
     }
 
+    private static Double getNullableDouble(ResultSet rs, String column) throws SQLException {
+        java.math.BigDecimal val = rs.getBigDecimal(column);
+        return val != null ? val.doubleValue() : null;
+    }
+
     public List<AttendanceLocationAudit> findLocationAuditBySession(Long sessionId) {
         return jdbcTemplate.query(
                 """
@@ -82,11 +87,11 @@ public class AttendanceTrackingRepository {
                     audit.setSessionTitle(rs.getString("session_title"));
                     audit.setLatitude(rs.getDouble("latitude"));
                     audit.setLongitude(rs.getDouble("longitude"));
-                    audit.setAccuracyMeters(rs.getObject("accuracy_meters", Double.class));
+                    audit.setAccuracyMeters(getNullableDouble(rs, "accuracy_meters"));
                     audit.setDistanceMeters(rs.getDouble("distance_meters"));
                     audit.setInsideGeofence(rs.getBoolean("inside_geofence"));
                     audit.setAccuracyStatus(rs.getString("accuracy_status"));
-                    audit.setBoundaryToleranceMeters(rs.getObject("boundary_tolerance_meters", Double.class));
+                    audit.setBoundaryToleranceMeters(getNullableDouble(rs, "boundary_tolerance_meters"));
                     audit.setEvaluationReason(rs.getString("evaluation_reason"));
                     return audit;
                 },

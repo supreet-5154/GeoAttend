@@ -1,6 +1,8 @@
 package com.geoattend.backend.repository;
 
 import com.geoattend.backend.model.Attendance;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -12,6 +14,11 @@ public class AttendanceRepository {
 
     public AttendanceRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+    }
+
+    private static Double getNullableDouble(ResultSet rs, String column) throws SQLException {
+        java.math.BigDecimal val = rs.getBigDecimal(column);
+        return val != null ? val.doubleValue() : null;
     }
 
     public int markAttendance(Attendance attendance) {
@@ -130,8 +137,8 @@ public class AttendanceRepository {
                         rs.getLong("session_id"),
                         rs.getLong("member_id"),
                         rs.getTimestamp("marked_at").toLocalDateTime(),
-                        rs.getObject("latitude", Double.class),
-                        rs.getObject("longitude", Double.class),
+                        getNullableDouble(rs, "latitude"),
+                        getNullableDouble(rs, "longitude"),
                         rs.getString("attendance_method")
                 ),
                 sessionId
@@ -155,8 +162,8 @@ public class AttendanceRepository {
                         rs.getLong("session_id"),
                         rs.getLong("member_id"),
                         rs.getTimestamp("marked_at").toLocalDateTime(),
-                        rs.getObject("latitude", Double.class),
-                        rs.getObject("longitude", Double.class),
+                        getNullableDouble(rs, "latitude"),
+                        getNullableDouble(rs, "longitude"),
                         rs.getString("attendance_method")
                 ),
                 memberId
@@ -180,8 +187,8 @@ public class AttendanceRepository {
                         rs.getLong("session_id"),
                         rs.getLong("member_id"),
                         rs.getTimestamp("marked_at").toLocalDateTime(),
-                        rs.getObject("latitude", Double.class),
-                        rs.getObject("longitude", Double.class),
+                        getNullableDouble(rs, "latitude"),
+                        getNullableDouble(rs, "longitude"),
                         rs.getString("attendance_method")
                 ),
                 batchId
@@ -205,8 +212,8 @@ public class AttendanceRepository {
                         rs.getLong("session_id"),
                         rs.getLong("member_id"),
                         rs.getTimestamp("marked_at").toLocalDateTime(),
-                        rs.getObject("latitude", Double.class),
-                        rs.getObject("longitude", Double.class),
+                        getNullableDouble(rs, "latitude"),
+                        getNullableDouble(rs, "longitude"),
                         rs.getString("attendance_method")
                 ),
                 sessionId,
@@ -267,8 +274,8 @@ public class AttendanceRepository {
                 rs.getLong("session_id"),
                 rs.getLong("member_id"),
                 rs.getTimestamp("marked_at").toLocalDateTime(),
-                rs.getObject("latitude", Double.class),
-                rs.getObject("longitude", Double.class),
+                getNullableDouble(rs, "latitude"),
+                getNullableDouble(rs, "longitude"),
                 rs.getString("attendance_method"),
                 rs.getString("session_title"),
                 rs.getString("member_name"),
