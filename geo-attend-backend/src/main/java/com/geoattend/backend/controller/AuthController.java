@@ -124,4 +124,15 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Invalid email or password");
         }
     }
+
+    @GetMapping("/status")
+    public ResponseEntity<?> getServerStatus() {
+        java.time.ZonedDateTime nowKolkata = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Kolkata"));
+        return ResponseEntity.ok(java.util.Map.of(
+                "status", "UP",
+                "jvmTimezone", java.util.TimeZone.getDefault().getID(),
+                "serverTimeKolkata", nowKolkata.toString(),
+                "localDateTimeNow", java.time.LocalDateTime.now().toString()
+        ));
+    }
 }
