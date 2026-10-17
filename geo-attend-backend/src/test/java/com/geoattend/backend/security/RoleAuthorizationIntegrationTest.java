@@ -45,6 +45,12 @@ class RoleAuthorizationIntegrationTest {
     @MockitoBean
     private com.geoattend.backend.service.AttendanceService attendanceService;
 
+    @MockitoBean
+    private com.geoattend.backend.repository.ClubUserRepository clubUserRepository;
+
+    @MockitoBean
+    private com.geoattend.backend.repository.MemberRepository memberRepository;
+
     private MockMvc mockMvc;
 
     private String adminToken;
@@ -212,5 +218,31 @@ class RoleAuthorizationIntegrationTest {
         mockMvc.perform(get("/api/attendance")
                         .header("Authorization", memberToken))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void refreshTokenWithValidBearerTokenReturnsOkAndNewToken() throws Exception {
+        Mockito.when(clubUserRepository.getUserById(1L))
+                .thenReturn(new ClubUser(1L, "Admin User", "ADMIN"));
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .header("Authorization", adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isString())
+                .andExpect(jsonPath("$.role").value("ADMIN"))
+                .andExpect(jsonPath("$.id").value(1L));
+    }
+
+    @Test
+    void refreshTokenWithoutTokenReturnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/auth/refresh"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void refreshTokenWithTamperedTokenReturnsUnauthorized() throws Exception {
+        mockMvc.perform(post("/api/auth/refresh")
+                        .header("Authorization", "Bearer invalid.token.payload"))
+                .andExpect(status().isUnauthorized());
     }
 }
