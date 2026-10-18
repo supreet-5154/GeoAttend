@@ -43,7 +43,7 @@ public class ClubUserRepository {
         String sql = """
             SELECT id, name, email, role, password_hash
             FROM club_users
-            WHERE email = ?
+            WHERE LOWER(email) = LOWER(?)
             """;
 
         return jdbcTemplate.queryForObject(
@@ -71,7 +71,7 @@ public class ClubUserRepository {
         String sql = """
             SELECT id, name, email, role, password_hash
             FROM club_users
-            WHERE email = ?
+            WHERE LOWER(email) = LOWER(?)
             """;
 
         return jdbcTemplate.queryForObject(

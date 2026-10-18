@@ -67,20 +67,24 @@ public class AuthController {
             @RequestBody LoginRequest request) {
 
         try {
+            if (request == null || request.getEmail() == null || request.getPassword() == null) {
+                return ResponseEntity.badRequest().body("Invalid email or password");
+            }
+            String email = request.getEmail().trim();
             LoginUser user = null;
 
             try {
-                user = clubUserRepository.getLoginUserByEmail(request.getEmail());
+                user = clubUserRepository.getLoginUserByEmail(email);
             } catch (EmptyResultDataAccessException ignored) {
                 user = null;
             }
 
             if (user == null) {
                 try {
-                    user = memberRepository.getLoginUserByEmail(request.getEmail());
+                    user = memberRepository.getLoginUserByEmail(email);
                 } catch (EmptyResultDataAccessException ignored) {
                     // Check if user has a pending or rejected registration request
-                    Optional<MemberSignup> signup = memberSignupRepository.findByEmail(request.getEmail());
+                    Optional<MemberSignup> signup = memberSignupRepository.findByEmail(email);
                     if (signup.isPresent()) {
                         String status = signup.get().status();
                         if ("PENDING".equalsIgnoreCase(status)) {

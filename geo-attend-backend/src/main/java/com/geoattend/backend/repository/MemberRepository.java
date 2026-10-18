@@ -213,7 +213,7 @@ public class MemberRepository {
     }
 
     public Member getMemberByEmail(String email) {
-        String sql = MEMBER_SELECT + " WHERE m.email = ?";
+        String sql = MEMBER_SELECT + " WHERE LOWER(m.email) = LOWER(?)";
 
         return jdbcTemplate.queryForObject(
                 sql,
@@ -233,7 +233,7 @@ public class MemberRepository {
     }
 
     public LoginUser getLoginUserByEmail(String email) {
-        String sql = "SELECT id, name, email, role, password_hash FROM members WHERE email = ?";
+        String sql = "SELECT id, name, email, role, password_hash FROM members WHERE LOWER(email) = LOWER(?)";
 
         return jdbcTemplate.queryForObject(
                 sql,

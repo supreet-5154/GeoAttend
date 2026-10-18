@@ -14,6 +14,16 @@ public class AttendanceSessionRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    private static Double getNullableDouble(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        java.math.BigDecimal val = rs.getBigDecimal(column);
+        return val != null ? val.doubleValue() : null;
+    }
+
+    private static Integer getNullableInteger(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        int val = rs.getInt(column);
+        return rs.wasNull() ? null : val;
+    }
+
     public List<AttendanceSession> getAllSessions() {
 
         String sql = """
@@ -36,9 +46,9 @@ public class AttendanceSessionRepository {
                     session.setEndTime(
                             rs.getTimestamp("end_time").toLocalDateTime()
                     );
-                    session.setLatitude(rs.getDouble("latitude"));
-                    session.setLongitude(rs.getDouble("longitude"));
-                    session.setRadiusMeters(rs.getInt("radius_meters"));
+                    session.setLatitude(getNullableDouble(rs, "latitude"));
+                    session.setLongitude(getNullableDouble(rs, "longitude"));
+                    session.setRadiusMeters(getNullableInteger(rs, "radius_meters"));
 
                     return session;
                 }
@@ -80,9 +90,9 @@ public class AttendanceSessionRepository {
             session.setTitle(rs.getString("title"));
             session.setStartTime(rs.getTimestamp("start_time").toLocalDateTime());
             session.setEndTime(rs.getTimestamp("end_time").toLocalDateTime());
-            session.setLatitude(rs.getDouble("latitude"));
-            session.setLongitude(rs.getDouble("longitude"));
-            session.setRadiusMeters(rs.getInt("radius_meters"));
+            session.setLatitude(getNullableDouble(rs, "latitude"));
+            session.setLongitude(getNullableDouble(rs, "longitude"));
+            session.setRadiusMeters(getNullableInteger(rs, "radius_meters"));
             return session;
         }, params.toArray());
     }
@@ -209,9 +219,9 @@ public class AttendanceSessionRepository {
                     session.setEndTime(
                             rs.getTimestamp("end_time").toLocalDateTime()
                     );
-                    session.setLatitude(rs.getDouble("latitude"));
-                    session.setLongitude(rs.getDouble("longitude"));
-                    session.setRadiusMeters(rs.getInt("radius_meters"));
+                    session.setLatitude(getNullableDouble(rs, "latitude"));
+                    session.setLongitude(getNullableDouble(rs, "longitude"));
+                    session.setRadiusMeters(getNullableInteger(rs, "radius_meters"));
 
                     return session;
                 },

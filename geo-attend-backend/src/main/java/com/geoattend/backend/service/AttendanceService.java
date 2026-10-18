@@ -42,6 +42,10 @@ public class AttendanceService {
 
     public int markAttendance(Attendance attendance) {
 
+        if (attendance == null || attendance.getMemberId() == null || attendance.getSessionId() == null) {
+            throw new RuntimeException("Session ID and Member ID are required");
+        }
+
         attendance.setAttendanceMethod("GEOFENCE");
 
         if (!memberRepository.memberExists(attendance.getMemberId())) {
@@ -101,7 +105,7 @@ public class AttendanceService {
             );
         }
 
-        attendance.setMarkedAt(LocalDateTime.now());
+        attendance.setMarkedAt(LocalDateTime.now(CLUB_ZONE));
         attendance.setAttendanceMethod("GEOFENCE");
 
         return attendanceRepository.markAttendance(attendance);
@@ -110,6 +114,10 @@ public class AttendanceService {
     public int markManualAttendance(
             ManualAttendanceRequest request,
             ClubUser clubUser) {
+
+        if (request == null || request.getMemberId() == null || request.getSessionId() == null) {
+            throw new RuntimeException("Session ID and Member ID are required");
+        }
 
         if (!clubUserService.canMarkManualAttendance(clubUser)) {
             throw new RuntimeException(
@@ -133,7 +141,7 @@ public class AttendanceService {
                         request.getSessionId()
                 );
 
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.LocalDateTime now = java.time.LocalDateTime.now(CLUB_ZONE);
         if (now.isBefore(session.getStartTime())) {
 
             throw new RuntimeException(
@@ -154,7 +162,7 @@ public class AttendanceService {
 
         attendance.setSessionId(request.getSessionId());
         attendance.setMemberId(request.getMemberId());
-        attendance.setMarkedAt(java.time.LocalDateTime.now());
+        attendance.setMarkedAt(java.time.LocalDateTime.now(CLUB_ZONE));
         attendance.setLatitude(null);
         attendance.setLongitude(null);
         attendance.setAttendanceMethod("MANUAL");
@@ -162,7 +170,7 @@ public class AttendanceService {
         int result = attendanceRepository.markAttendance(attendance);
         if (result > 0) {
             attendanceTrackingRepository.markManualOverride(
-                request.getMemberId(), request.getSessionId(), LocalDateTime.now());
+                request.getMemberId(), request.getSessionId(), LocalDateTime.now(CLUB_ZONE));
         }
         return result;
     }
@@ -171,7 +179,7 @@ public class AttendanceService {
         if (!attendanceRepository.attendanceExistsById(attendanceId)) {
             return 0;
         }
-        if (attendance.getMemberId() == null || !memberRepository.memberExists(attendance.getMemberId())) {
+        if (attendance == null || attendance.getMemberId() == null || !memberRepository.memberExists(attendance.getMemberId())) {
             throw new IllegalArgumentException("Select an existing member.");
         }
         if (attendance.getSessionId() == null || !attendanceSessionRepository.sessionExists(attendance.getSessionId())) {
@@ -218,7 +226,7 @@ public class AttendanceService {
         int result = attendanceRepository.updateAttendance(attendanceId, attendance);
         if (result > 0 && "MANUAL".equals(attendance.getAttendanceMethod())) {
             attendanceTrackingRepository.markManualOverride(
-                attendance.getMemberId(), attendance.getSessionId(), LocalDateTime.now());
+                attendance.getMemberId(), attendance.getSessionId(), LocalDateTime.now(CLUB_ZONE));
         }
         return result;
     }
