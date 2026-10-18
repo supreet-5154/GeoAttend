@@ -8,7 +8,6 @@ import {
   FileSpreadsheet,
   Layers,
   LocateFixed,
-  Plus,
   Search,
   ShieldAlert,
   ShieldCheck,
@@ -494,46 +493,18 @@ export default function Attendance({ user, showToast }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (!editingRecord) return;
 
     try {
-      if (editingRecord) {
-        await attendanceService.updateAttendance(editingRecord.id, {
-          sessionId: Number(form.sessionId),
-          memberId: Number(form.memberId),
-          attendanceMethod: form.method,
-          latitude: form.method === "GEOFENCE" ? Number(form.latitude) : null,
-          longitude: form.method === "GEOFENCE" ? Number(form.longitude) : null,
-          markedAt: form.markedAt,
-        });
-        showToast("Attendance record updated successfully.", "success");
-        closeModal();
-        getAllAttendance();
-        return;
-      }
-
-      if (form.method === "GEOFENCE") {
-        const payload = {
-          sessionId: Number(form.sessionId),
-          memberId: Number(form.memberId),
-          latitude: Number(form.latitude),
-          longitude: Number(form.longitude),
-        };
-
-        if (!payload.latitude || !payload.longitude) {
-          setGeoMessage("Latitude and longitude are required for geofence verification.");
-          return;
-        }
-
-        await attendanceService.createAttendance(payload);
-        showToast("Geofence attendance recorded successfully.", "success");
-      } else {
-        await attendanceService.createManualAttendance({
-          sessionId: Number(form.sessionId),
-          memberId: Number(form.memberId),
-        });
-        showToast("Manual attendance recorded successfully.", "success");
-      }
-
+      await attendanceService.updateAttendance(editingRecord.id, {
+        sessionId: Number(form.sessionId),
+        memberId: Number(form.memberId),
+        attendanceMethod: form.method,
+        latitude: form.method === "GEOFENCE" ? Number(form.latitude) : null,
+        longitude: form.method === "GEOFENCE" ? Number(form.longitude) : null,
+        markedAt: form.markedAt,
+      });
+      showToast("Attendance record updated successfully.", "success");
       closeModal();
       getAllAttendance();
     } catch (error) {
@@ -555,29 +526,14 @@ export default function Attendance({ user, showToast }) {
 
         <div className="page-header-actions">
           {canMarkAttendance && (
-            <>
-              <button
-                type="button"
-                className="primary-button fast-checkin-btn"
-                onClick={() => setShowFastCheckIn(true)}
-              >
-                <UserCheck size={16} />
-                <span>Fast Manual Check-in</span>
-              </button>
-
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => {
-                  setEditingRecord(null);
-                  setForm(initialForm);
-                  setShowModal(true);
-                }}
-              >
-                <Plus size={16} />
-                <span>Custom Entry</span>
-              </button>
-            </>
+            <button
+              type="button"
+              className="primary-button fast-checkin-btn"
+              onClick={() => setShowFastCheckIn(true)}
+            >
+              <UserCheck size={16} />
+              <span>Fast Manual Check-in</span>
+            </button>
           )}
         </div>
       </div>
@@ -1077,8 +1033,8 @@ export default function Attendance({ user, showToast }) {
         </div>
       )}
 
-      {/* STANDARD CRUD MODAL */}
-      {showModal && (
+      {/* EDIT RECORD MODAL */}
+      {showModal && editingRecord && (
         <div className="modal-backdrop" onClick={closeModal} role="presentation">
           <div
             className="modal-card large"
@@ -1088,9 +1044,7 @@ export default function Attendance({ user, showToast }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h3 id="attendance-modal-title">
-                {editingRecord ? "Edit Attendance Record" : "Manual Attendance Entry"}
-              </h3>
+              <h3 id="attendance-modal-title">Edit Attendance Record</h3>
               <button
                 type="button"
                 className="modal-close"
@@ -1220,7 +1174,7 @@ export default function Attendance({ user, showToast }) {
                   Cancel
                 </button>
                 <button type="submit" className="primary-button">
-                  {editingRecord ? "Save Changes" : "Record Attendance"}
+                  Save Changes
                 </button>
               </div>
             </form>
